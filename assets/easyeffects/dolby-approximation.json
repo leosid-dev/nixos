@@ -1,0 +1,47 @@
+{
+  "output": {
+    "equalizer": {
+      "state": "on",
+      "input-gain": 0.0,
+      "output-gain": 0.0,
+      "left": {
+        "mode": "parametric",
+        "num-bands": 14,
+        "preamp": 0.0,
+        "band0": { "type": "LS12", "frequency": 60.0, "gain": 6.0, "q": 0.707 },
+        "band1": { "type": "PEAK", "frequency": 120.0, "gain": 4.0, "q": 0.9 },
+        "band2": { "type": "PEAK", "frequency": 250.0, "gain": 2.5, "q": 1.0 },
+        "band3": { "type": "PEAK", "frequency": 500.0, "gain": 1.0, "q": 1.0 },
+        "band4": { "type": "PEAK", "frequency": 1000.0, "gain": 0.0, "q": 1.0 },
+        "band5": { "type": "PEAK", "frequency": 2000.0, "gain": 1.5, "q": 1.0 },
+        "band6": { "type": "PEAK", "frequency": 4000.0, "gain": 2.0, "q": 1.0 },
+        "band7": { "type": "PEAK", "frequency": 8000.0, "gain": 3.0, "q": 1.0 },
+        "band8": { "type": "PEAK", "frequency": 12000.0, "gain": 2.0, "q": 1.0 },
+        "band9": { "type": "HS12", "frequency": 16000.0, "gain": 0.0, "q": 0.707 },
+        "band10": { "type": "PEAK", "frequency": 31.5, "gain": 0.0, "q": 1.0 },
+        "band11": { "type": "PEAK", "frequency": 63.0, "gain": 0.0, "q": 1.0 },
+        "band12": { "type": "PEAK", "frequency": 125.0, "gain": 0.0, "q": 1.0 },
+        "band13": { "type": "PEAK", "frequency": 250.0, "gain": 0.0, "q": 1.0 }
+      },
+      "right": {
+        "mode": "parametric",
+        "num-bands": 14,
+        "preamp": 0.0,
+        "band0": { "type": "LS12", "frequency": 60.0, "gain": 6.0, "q": 0.707 },
+        "band1": { "type": "PEAK", "frequency": 120.0, "gain": 4.0, "q": 0.9 },
+        "band2": { "type": "PEAK", "frequency": 250.0, "gain": 2.5, "q": 1.0 },
+        "band3": { "type": "PEAK", "frequency": 500.0, "gain": 1.0, "q": 1.0 },
+        "band4": { "type": "PEAK", "frequency": 1000.0, "gain": 0.0, "q": 1.0 },
+        "band5": { "type": "PEAK", "frequency": 2000.0, "gain": 1.5, "q": 1.0 },
+        "band6": { "type": "PEAK", "frequency": 4000.0, "gain": 2.0, "q": 1.0 },
+        "band7": { "type": "PEAK", "frequency": 8000.0, "gain": 3.0, "q": 1.0 },
+        "band8": { "type": "PEAK", "frequency": 12000.0, "gain": 2.0, "q": 1.0 },
+        "band9": { "type": "HS12", "frequency": 16000.0, "gain": 0.0, "q": 0.707 },
+        "band10": { "type": "PEAK", "frequency": 31.5, "gain": 0.0, "q": 1.0 },
+        "band11": { "type": "PEAK", "frequency": 63.0, "gain": 0.0, "q": 1.0 },
+        "band12": { "type": "PEAK", "frequency": 125.0, "gain": 0.0, "q": 1.0 },
+        "band13": { "type": "PEAK", "frequency": 250.0, "gain": 0.0, "q": 1.0 }
+      }
+    }
+  }
+}
