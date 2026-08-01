@@ -6,6 +6,10 @@
   sid = {
     imports = [ ../../profiles/desktop.nix ];
 
+    # Home Manager itself must be added to the user's profile so the
+    # managed `home-manager` command and activation survive a rebuild.
+    programs.home-manager.enable = true;
+
     home = {
       username = "sid";
       homeDirectory = "/home/sid";

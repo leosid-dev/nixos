@@ -1,7 +1,10 @@
 # hosts/thinkbook/default.nix — Lenovo ThinkBook 16 G7 ARP composition.
 #
 # This is the single point where all aspects are selected for this machine.
-{ lib, home-manager, noctalia }:
+# It imports the whole modules/system tree once and enables the `aspects.*`
+# it needs; the flake top-level and lib remain host-agnostic. Only `lib` is
+# required — mkHost closes over home-manager/noctalia/sops-nix/noctalia-greeter.
+{ lib, ... }:
 let
   system = "x86_64-linux";
 
@@ -9,7 +12,11 @@ let
   overlays = (import ../../overlays/core.nix) ++ (import ./overlays.nix);
 
   # Build stable + unstable package channels
-  channels = lib.channels { inherit system overlays; };
+  # Unfree policy is owned by this host (gaming/firmware aspects need it).
+  channels = lib.channels {
+    inherit system overlays;
+    config.allowUnfree = true;
+  };
 
   # Home Manager user definitions (attrset of username → HM module)
   users = import ./users.nix;
@@ -18,28 +25,52 @@ lib.mkHost {
   inherit system channels users;
 
   modules = [
-    # ── Host identity ───────────────────────────────────────────
+    # ── System aspects (import all; enable via aspects.* below) ────
+    ../../modules/system
+
+    # ── Machine-specific hardware (filesystems, initrd) ────────────
+    ./hardware.nix
+
+    # ── User modules (system-level identity, gated via usersDef.*) ─
+    ../../modules/users/sid.nix
+
+    # ── Host identity & aspect selection ───────────────────────────
     {
       networking.hostName = "thinkbook";
       system.stateVersion = "26.05";
+      users.mutableUsers = false; # All users managed declaratively
+
+      # Aspect selection: hosts declare intent, modules stay dumb.
+      aspects = {
+        desktop.enable = true;
+        sound.enable = true;
+        power.enable = true;
+        gaming.enable = true;
+        fonts.enable = true;
+        ssh.enable = true;
+        secrets.enable = true;
+
+        hardware = {
+          amdRembrandt = {
+            enable = true;
+            audioPowerSave = 0;
+          };
+          network = {
+            enable = true;
+            wifi = {
+              aspmFix = true;
+              powersave = false;
+            };
+          };
+          storage.enable = true;
+          usb = {
+            enable = true;
+            thunderbolt = true; # Rembrandt USB4 router confirmed via lspci
+          };
+        };
+      };
+
+      usersDef.sid.enable = true;
     }
-
-    # ── Hardware (filesystems, initrd, SoC-specific) ────────────
-    ./hardware.nix
-
-    # ── System aspects (aspect-oriented toggleable modules) ─────
-    ../../modules/system/core
-    ../../modules/system/desktop
-    ../../modules/system/sound.nix
-    ../../modules/system/power.nix
-    ../../modules/system/fonts.nix
-    ../../modules/system/gaming.nix
-    ../../modules/system/hardware/amd-rembrandt.nix
-    ../../modules/system/hardware/network.nix
-    ../../modules/system/hardware/storage.nix
-    ../../modules/system/hardware/usb.nix
-
-    # ── User modules (system-level identity) ───────────────────
-    ../../modules/users/sid.nix
   ];
 }

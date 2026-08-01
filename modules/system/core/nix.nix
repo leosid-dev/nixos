@@ -1,28 +1,31 @@
 # modules/system/core/nix.nix — Nix daemon, flakes, GC, store optimisation.
-{ ... }:
+{ lib, config, ... }:
 {
-  nix.settings = {
-    experimental-features = [
-      "nix-command"
-      "flakes"
-    ];
-    auto-optimise-store = true;
+  config = lib.mkIf config.aspects.core.enable {
+    nix.settings = {
+      experimental-features = [
+        "nix-command"
+        "flakes"
+      ];
+      auto-optimise-store = true;
 
-    # Noctalia binary cache
-    substituters = [ "https://noctalia.cachix.org" ];
-    trusted-public-keys = [
-      "noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4="
-    ];
+      # Noctalia binary cache (additive — official cache.nixos.org stays default)
+      extra-substituters = [ "https://noctalia.cachix.org" ];
+      trusted-public-keys = [
+        "noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4="
+      ];
+    };
+
+    nix.gc = {
+      automatic = true;
+      dates = "weekly";
+      options = "--delete-older-than 14d";
+    };
+
+    nix.optimise.automatic = true;
+
+    # NOTE: unfree package policy is passed by each host into `lib.channels`
+    # (channels config.allowUnfree), because nixpkgs.pkgs is externally
+    # constructed — setting nixpkgs.config here would fail evaluation.
   };
-
-  nix.gc = {
-    automatic = true;
-    dates = "weekly";
-    options = "--delete-older-than 14d";
-  };
-
-  nix.optimise.automatic = true;
-
-  # Allow unfree packages (standard NixOS mechanism)
-  nixpkgs.config.allowUnfree = true;
 }

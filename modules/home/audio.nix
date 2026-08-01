@@ -1,8 +1,12 @@
 # modules/home/audio.nix — EasyEffects DSP for Dolby-like audio enhancement.
 #
-# Uses EasyEffects (PipeWire plugin host) with a custom parametric EQ preset
-# that approximates Dolby Atmos' frequency response curve. The preset is
-# auto-loaded at login via a systemd user service.
+# Uses EasyEffects (PipeWire plugin host) with a preset that approximates the
+# Windows Dolby/HARMAN tuning: harmonic bass synthesis + parametric EQ +
+# limiter. This machine (ThinkBook 16 G7 ARP, Realtek ALC257, no smart amps)
+# has no DSP on Linux, so this chain restores the missing bass/presence.
+#
+# The preset is loaded by a oneshot unit once the EasyEffects service is up;
+# EasyEffects' own autoload-on-device matching is too fragile to rely on here.
 { pkgs, ... }:
 let
   easyeffects = pkgs.unstable.easyeffects;
@@ -13,16 +17,17 @@ in
     pkgs.helvum # PipeWire patchbay for debugging audio routing
   ];
 
-  # Deploy the Dolby-approximation EQ preset
+  # Deploy the Dolby-approximation DSP chain preset
   xdg.configFile."easyeffects/output/dolby-approximation.json".source =
     ../../assets/easyeffects/dolby-approximation.json;
 
-  # Auto-start EasyEffects as a D-Bus activated service
+  # EasyEffects as a D-Bus activated service, tied to the graphical session
   systemd.user.services.easyeffects = {
     Unit = {
       Description = "EasyEffects — PipeWire audio DSP";
       After = [ "pipewire.service" ];
       Requires = [ "pipewire.service" ];
+      PartOf = [ "graphical-session.target" ];
     };
     Service = {
       Type = "dbus";
@@ -31,15 +36,21 @@ in
       Restart = "on-failure";
       RestartSec = 5;
     };
-    Install.WantedBy = [ "default.target" ];
+    Install.WantedBy = [ "graphical-session.target" ];
   };
 
-  # Auto-load the preset once EasyEffects is running
-  xdg.configFile."easyeffects/autoload/output/dolby-approximation.json".text =
-    builtins.toJSON {
-      device = "";
-      "device-description" = "";
-      "device-profile" = "";
-      preset-name = "dolby-approximation";
+  # Load the Dolby-approximation preset once EasyEffects is running
+  systemd.user.services.easyeffects-dolby-preset = {
+    Unit = {
+      Description = "Load the EasyEffects Dolby-approximation preset";
+      After = [ "easyeffects.service" ];
+      Requires = [ "easyeffects.service" ];
+      PartOf = [ "graphical-session.target" ];
     };
+    Service = {
+      Type = "oneshot";
+      ExecStart = "${easyeffects}/bin/easyeffects --load-preset dolby-approximation";
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
 }

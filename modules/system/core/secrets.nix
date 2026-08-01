@@ -1,19 +1,24 @@
 # modules/system/core/secrets.nix — Sops-nix secrets management aspect.
 #
-# Provides stateless runtime secret decryption at /run/secrets/
-# using SSH host keys or age keys.
-{ pkgs, ... }:
+# Stateless runtime secret decryption at /run/secrets/ using SSH host keys.
+# Gated by aspects.secrets.enable; hosts opt in. The encrypted file lives at
+# secrets/secrets.yaml (see that dir's README for the imperative bootstrap).
+#
+# NOTE: this module is intentionally user-agnostic — individual secrets are
+# declared by the modules that consume them (e.g. modules/users/*.nix).
+{ lib, config, pkgs, ... }:
 {
-  # Install sops and age CLI tools for managing secrets
-  environment.systemPackages = with pkgs; [
-    sops
-    age
-  ];
+  options.aspects.secrets.enable = lib.mkEnableOption "sops-nix secret management";
 
-  # Placeholder configuration for sops-nix integration.
-  # When sops-nix input is wired, it manages /etc/ssh/ssh_host_ed25519_key decryption.
-  # Example usage in modules:
-  # sops.secrets.example-secret = {
-  #   sopsFile = ../../../secrets/secrets.yaml;
-  # };
+  config = lib.mkIf config.aspects.secrets.enable {
+    environment.systemPackages = with pkgs; [
+      sops
+      age
+    ];
+
+    sops = {
+      defaultSopsFile = ../../../secrets/secrets.yaml;
+      age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+    };
+  };
 }

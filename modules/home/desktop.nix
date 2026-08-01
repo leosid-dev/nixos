@@ -1,57 +1,34 @@
 # modules/home/desktop.nix — Wayland desktop environment (HM-level).
 #
-# Consolidates: niri user config, environment variables, Wayland tooling.
+# Consolidates: niri user config, Wayland tooling, terminal emulator.
+# Desktop-session environment variables are set at system level (desktop/niri)
+# so they apply uniformly to every login method.
+#
+# NOTE: Home Manager ships no `programs.niri` module, and the nixpkgs NixOS
+# module only handles the compositor/session. The niri user config is therefore
+# written directly as the raw config.kdl below.
 { pkgs, ... }:
 {
-  # ── Wayland environment variables ───────────────────────────────
-  home.sessionVariables = {
-    # Desktop session identity
-    XDG_CURRENT_DESKTOP = "niri";
-    XDG_SESSION_DESKTOP = "niri";
-    XDG_SESSION_TYPE = "wayland";
+  # ── Niri compositor (user-level config) ─────────────────────────
+  xdg.configFile."niri/config.kdl".text = ''
+    prefer-no-csd true
 
-    # Toolkit Wayland backends
-    MOZ_ENABLE_WAYLAND = "1";
-    NIXOS_OZONE_WL = "1"; # Electron apps (VS Code, Discord, etc.)
-    QT_QPA_PLATFORM = "wayland;xcb";
-    GDK_BACKEND = "wayland,x11";
-    SDL_VIDEODRIVER = "wayland";
-    CLUTTER_BACKEND = "wayland";
+    layout {
+        gaps 8
+        center-focused-column "always"
+    }
 
-    # Portal / Java integration
-    GTK_USE_PORTAL = "1";
-    _JAVA_AWT_WM_NONREPARENTING = "1";
-    
-    # Terminal
-    TERMINAL = "kitty";
-  };
+    # Noctalia is started via its own systemd user unit
+    # (programs.noctalia.systemd.enable), not spawned here — spawning it
+    # twice races the singleton instance.
 
-  # ── Niri compositor (user-level settings) ───────────────────────
-  programs.niri = {
-    settings = {
-      prefer-no-csd = true;
-
-      layout = {
-        gaps = 8;
-        center-focused-column = "always";
-      };
-
-      spawn-at-startup = [
-        { command = [ "noctalia" ]; }
-      ];
-
-      binds = let
-        kitty = "${pkgs.kitty}/bin/kitty";
-        grim = "${pkgs.grim}/bin/grim";
-        slurp = "${pkgs.slurp}/bin/slurp";
-      in {
-        "Mod+Return".action.spawn = [ kitty ];
-        "Mod+q".action.close-window = [ ];
-        "Mod+Shift+P".action.spawn = [ "sh" "-c" "${grim} -g \"$(${slurp})\" - | wl-copy" ];
-        "Mod+Shift+Escape".action.power-off-monitors = [ ];
-      };
-    };
-  };
+    binds {
+        Mod+Return { spawn "kitty"; }
+        Mod+q { close-window; }
+        Mod+Shift+P { spawn "sh" "-c" "grim -g \"$(slurp)\" - | wl-copy"; }
+        Mod+Shift+Escape { power-off-monitors; }
+    }
+  '';
 
   # ── Terminal emulator ───────────────────────────────────────────
   programs.kitty = {
@@ -77,11 +54,26 @@
     };
   };
 
-  # ── Wayland utilities ───────────────────────────────────────────
+  # ── Wayland utilities & X11 compatibility ───────────────────────
+  # xwayland-satellite gives niri X11 app support (niri has no built-in
+  # XWayland). niri auto-detects and starts it when present in $PATH.
   home.packages = with pkgs; [
     xdg-utils
     wl-clipboard
     grim
     slurp
+    xwayland-satellite
+
+    # QT Wayland platform plugins (QT_QPA_PLATFORM=wayland;xcb is set at
+    # system level; without these QT apps fall back to XWayland).
+    qt6Packages.qtwayland
+    qt5.qtwayland
   ];
+
+  # Per-user preferences (desktop-session identity lives at system level)
+  home.sessionVariables = {
+    TERMINAL = "kitty";
+    EDITOR = "nvim";
+    VISUAL = "nvim";
+  };
 }

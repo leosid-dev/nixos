@@ -2,25 +2,42 @@
 #
 # Defines the OS user identity: groups, login shell, sudo policy.
 # This is a user concern, not a host concern — reusable across machines.
-{ pkgs, ... }:
+# Gated by usersDef.sid.enable (a host opts a user in).
+{ lib, config, pkgs, ... }:
 {
-  users.users.sid = {
-    isNormalUser = true;
-    description = "sid";
-    extraGroups = [
-      "wheel"
-      "networkmanager"
-      "video"
-      "audio"
-      "input"
-      "storage"
-    ];
-    shell = pkgs.zsh;
-    linger = true; # Allow user services to start at boot
+  options.usersDef.sid.enable = lib.mkEnableOption "system user sid";
+
+  config = lib.mkIf config.usersDef.sid.enable {
+    users.users.sid = {
+      isNormalUser = true;
+      description = "sid";
+      extraGroups = [
+        "wheel"
+        "networkmanager"
+        "video"
+        "audio"
+        "input"
+        "storage"
+        "gamemode"
+      ];
+      shell = pkgs.zsh;
+      linger = true; # Allow user services to start at boot
+
+      # Password comes from sops (aspects.secrets). Without it the account
+      # would be locked: mutableUsers is false, so it cannot be set later.
+      # Guarded on the secrets aspect so this module stays composable for
+      # hosts that opt the user in without sops.
+      hashedPasswordFile = lib.mkIf config.aspects.secrets.enable
+        config.sops.secrets."users/sid/password".path;
+    };
+
+    # The password secret itself lives here (owned by the consuming user
+    # module), only when the secrets aspect is enabled.
+    sops.secrets."users/sid/password" = lib.mkIf config.aspects.secrets.enable {
+      neededForUsers = true;
+    };
+
+    # Zsh must be enabled at system level for PAM / login shell integration
+    programs.zsh.enable = true;
   };
-
-  # Zsh must be enabled at system level for PAM / login shell integration
-  programs.zsh.enable = true;
-
-  security.sudo.wheelNeedsPassword = false;
 }

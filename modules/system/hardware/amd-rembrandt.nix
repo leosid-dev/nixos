@@ -1,60 +1,75 @@
 # modules/system/hardware/amd-rembrandt.nix — AMD Rembrandt SoC (Zen 3+ / RDNA2).
 #
 # Hardware: Ryzen 7 7735HS CPU + Radeon 680M iGPU.
-{ lib, pkgs, ... }:
+# Gated by aspects.hardware.amdRembrandt.enable.
+{ lib, config, pkgs, ... }:
+let
+  cfg = config.aspects.hardware.amdRembrandt;
+in
 {
-  # ── CPU Microcode & Driver Tuning ──────────────────────────────
-  hardware.cpu.amd.updateMicrocode = lib.mkDefault true;
+  options.aspects.hardware.amdRembrandt = {
+    enable = lib.mkEnableOption "AMD Rembrandt SoC support";
 
-  boot.kernelModules = [
-    "amd_energy"   # Energy counters monitoring per-core/package power
-    "k10temp"      # CPU temperature monitoring driver
-    "ideapad_laptop" # Lenovo WMI/ACPI hotkeys & thermal profile mode controls
-    "amdgpu"
-  ];
+    audioPowerSave = lib.mkOption {
+      type = lib.types.int;
+      default = 0;
+      description = ''
+        HDA codec runtime power-save timeout (seconds). 0 disables it.
+        On this machine power-save causes audible pops/crackle when the
+        Realtek ALC257 codec wakes (see Lenovo/Ubuntu bug reports), so it
+        defaults to off.
+      '';
+    };
 
-  boot.initrd.kernelModules = [ "amdgpu" ];
-
-  boot.kernelParams = [
-    "amd_pstate=active"        # Driver: amd-pstate-epp
-    "amdgpu.ppfeaturemask=0xffffffff" # Enable full OverDrive GPU power, fan, clock & voltage control
-    "amdgpu.gpu_recovery=1"    # Enable automatic GPU recovery on hangs
-  ];
-
-  # ── iGPU & VAAPI Hardware Acceleration ────────────────────────
-  hardware.graphics = {
-    enable = true;
-    enable32Bit = true;
-    extraPackages = with pkgs; [
-      vaapiVdpau
-      libvdpau-va-gl
-    ];
+    flickerFix = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Disable Panel Self Refresh via amdgpu.dcdebugmask=0x10. Toggle this
+        if you observe screen flicker or external-monitor freezes (a known
+        DCN 3.1.4 issue on Rembrandt laptops).
+      '';
+    };
   };
 
-  # ── Firmware & Kernel Parameters ──────────────────────────────
-  hardware.enableRedistributableFirmware = true;
-  hardware.enableAllFirmware = true;
+  config = lib.mkIf cfg.enable {
+    # ── CPU Microcode & Driver Tuning ──────────────────────────────
+    hardware.cpu.amd.updateMicrocode = lib.mkDefault true;
 
-  boot.extraModprobeConfig = ''
-    options snd_hda_intel power_save=10 power_save_controller=Y
-    options snd_soc_sof_toplevel perf_debug=0
-  '';
+    boot.kernelModules = [
+      "amd_energy"   # Energy counters monitoring per-core/package power
+      "k10temp"      # CPU temperature monitoring driver
+      "ideapad_laptop" # Lenovo WMI/ACPI hotkeys, Fn+Q thermal & platform profile
+      "amdgpu"
+    ];
 
-  # ── Power & Performance Management Tools ──────────────────────
-  environment.systemPackages = with pkgs; [
-    ryzenadj          # Power/TDP/temperature limit tuning for mobile AMD APUs
-    corectrl          # GUI control for AMD GPU/CPU clock, power profiles, and fan curves
-    lm_sensors        # Hardware monitoring utilities
-  ];
+    boot.initrd.kernelModules = [ "amdgpu" ];
 
-  # Allow CoreCtrl to adjust hardware controls without manual password prompts
-  security.polkit.extraConfig = ''
-    polkit.addRule(function(action, subject) {
-        if ((action.id == "org.corectrl.helper.init" ||
-             action.id == "org.corectrl.helper me.init") &&
-            subject.isInGroup("wheel")) {
-            return polkit.Result.YES;
-        }
-    });
-  '';
+    boot.kernelParams =
+      [
+        "amd_pstate=active"        # Driver: amd-pstate-epp
+        "amdgpu.gpu_recovery=1"    # Enable automatic GPU recovery on hangs
+      ]
+      ++ lib.optionals cfg.flickerFix [ "amdgpu.dcdebugmask=0x10" ];
+
+    # ── iGPU & VAAPI Hardware Acceleration ────────────────────────
+    hardware.graphics = {
+      enable = true;
+      enable32Bit = true;
+      extraPackages = with pkgs; [
+        vaapiVdpau
+        libvdpau-va-gl
+      ];
+    };
+
+    # ── Firmware ──────────────────────────────────────────────────
+    # Redistributable firmware only (AMD/amdgpu + mediaTek blobs); avoiding
+    # enableAllFirmware keeps the closure lean and licensing clean.
+    hardware.enableRedistributableFirmware = true;
+
+    # HDA codec power management (0 = disabled to avoid wake pops)
+    boot.extraModprobeConfig = lib.mkIf (cfg.audioPowerSave != 0) ''
+      options snd_hda_intel power_save=${toString cfg.audioPowerSave} power_save_controller=Y
+    '';
+  };
 }

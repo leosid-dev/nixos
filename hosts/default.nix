@@ -1,8 +1,8 @@
-# hosts/default.nix — Auto-discover hosts from subdirectories.
+# hosts/default.nix — Auto-discovers host directories → nixosConfigurations.
 #
-# Each subdirectory under hosts/ is a machine. Its default.nix receives
-# { lib, nixpkgsLib, home-manager, noctalia } and returns a NixOS config.
-{ lib, nixpkgsLib, home-manager, noctalia }:
+# Third-party inputs (home-manager, noctalia, sops-nix, noctalia-greeter) are
+# closed over by lib.mkHost, so hosts only need `lib` + `nixpkgsLib`.
+{ lib, nixpkgsLib }:
 let
   entries = builtins.readDir ./.;
   hostNames = nixpkgsLib.filter (name: entries.${name} == "directory") (
@@ -10,8 +10,5 @@ let
   );
 in
 nixpkgsLib.genAttrs hostNames (
-  name:
-  import (./. + "/${name}") {
-    inherit lib home-manager noctalia;
-  }
+  name: import (./. + "/${name}") { inherit lib; }
 )

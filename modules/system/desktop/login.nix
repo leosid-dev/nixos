@@ -1,15 +1,17 @@
 # modules/system/desktop/login.nix — Login / greeter service.
 #
-# Uses noctalia's built-in greeter (per AGENTS.md: "noctalia v5 for
-# shell and login management"). Greetd+tuigreet has been removed.
-{ ... }:
+# Uses Noctalia Greeter (greetd-based) for a login screen matching the
+# Noctalia shell. Greeters run pre-login as the `greeter` user, so they are
+# inherently a system concern — Home Manager cannot manage them.
+{ lib, config, ... }:
 {
-  # Noctalia handles login via its own greeter mechanism at the
-  # Home Manager level (programs.noctalia.systemd.enable = true).
-  # At the system level we just need to ensure the greeter service
-  # dependencies are met.
-
-  services.udisks2.enable = true;
-
-  services.openssh.enable = true;
+  config = lib.mkIf config.aspects.desktop.enable {
+    programs.noctalia-greeter = {
+      enable = true;
+      settings = {
+        session.default = "niri";
+        keyboard.layout = "us";
+      };
+    };
+  };
 }

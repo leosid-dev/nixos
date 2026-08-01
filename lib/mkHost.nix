@@ -1,14 +1,15 @@
 # lib/mkHost.nix — Pure host constructor.
 #
 # Accepts { system, channels, users, modules } and produces a
-# nixpkgs.lib.nixosSystem value. Home Manager is wired in automatically.
-{ nixpkgsLib, home-manager, noctalia }:
+# nixpkgs.lib.nixosSystem value. Home Manager, sops-nix and the noctalia
+# greeter are wired in automatically (each is inert without configuration).
+{ nixpkgsLib, home-manager, noctalia, sops-nix, noctalia-greeter }:
 { system, channels, users, modules }:
 nixpkgsLib.nixosSystem {
   inherit system;
 
   specialArgs = {
-    inherit channels noctalia;
+    inherit noctalia;
   };
 
   modules =
@@ -26,6 +27,10 @@ nixpkgsLib.nixosSystem {
           users = users;
         };
       }
+
+      # Third-party system modules (inert until configured)
+      sops-nix.nixosModules.sops
+      noctalia-greeter.nixosModules.default
     ]
     ++ modules;
 }

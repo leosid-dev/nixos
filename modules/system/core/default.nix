@@ -1,13 +1,22 @@
 # modules/system/core/default.nix — Always-on system fundamentals.
 #
-# This aspect is imported by every host. It provides:
+# Provides:
 #   - Nix daemon settings (flakes, gc, optimisation)
 #   - Boot loader configuration
 #   - Locale / timezone / console defaults
-#   - nixpkgs.config (allowUnfree)
 #   - Minimal system packages & secrets management
 #   - nix-ld for dynamic binaries
+#
+# Gated by aspects.core.enable (default true). Disabling this aspect is only
+# meaningful for exotic container/VM hosts — it should normally stay on.
+{ lib, ... }:
 {
+  options.aspects.core.enable = lib.mkOption {
+    type = lib.types.bool;
+    default = true;
+    description = "Enable core system fundamentals (nix, boot, locale, packages, secrets).";
+  };
+
   imports = [
     ./nix.nix
     ./boot.nix

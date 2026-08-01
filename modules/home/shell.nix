@@ -22,7 +22,7 @@
       cat = "bat";
       g = "git";
       untrack = "git clean -fdX";
-      rebuild = "sudo nixos-rebuild switch --flake ~/nixos#thinkbook";
+      rebuild = "sudo nixos-rebuild switch --flake ~/nixos#$(hostname)";
     };
   };
 

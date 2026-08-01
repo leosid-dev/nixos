@@ -8,7 +8,7 @@
   - Flakes toplevel should be agnostic to system/host configuration and user management(hm) and maintain a modular/layered architecture(ASPECT-ORIENTED)
   - Modules make use of pure functions as much as possible for robust evaluations and use layered architecture for customizability(ASPECT-ORIENTED)
   - Start with system configuration with a neat sensible defaults
-  - use niri as compositor, noctalia v5 for shell and login management via hm
+  - use niri as compositor, noctalia v5 for shell via hm; login via noctalia-greeter (greetd-based — a system module, since greeters run pre-login and cannot be managed by home-manager)
   - add minimal sensible system packages with unstable/stable selection for packages
   - ADD/SET ALL THE ENVIRONMENT VARIABLES/PACKAGES REQUIRED FOR UNIFORM USER EXPERIENCE INTEGRATION (like shell, themes, fonts, portals, compositors and window manager compatabilities, etc)
   
