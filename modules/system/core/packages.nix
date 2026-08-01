@@ -5,8 +5,6 @@
     git
     curl
     wget
-    vim
-    neovim
     htop
     jq
     ripgrep

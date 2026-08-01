@@ -5,7 +5,7 @@
 #   - Boot loader configuration
 #   - Locale / timezone / console defaults
 #   - nixpkgs.config (allowUnfree)
-#   - Minimal system packages
+#   - Minimal system packages & secrets management
 #   - nix-ld for dynamic binaries
 {
   imports = [
@@ -13,5 +13,6 @@
     ./boot.nix
     ./locale.nix
     ./packages.nix
+    ./secrets.nix
   ];
 }

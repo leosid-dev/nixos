@@ -5,6 +5,8 @@
 {
   imports = [
     ../modules/home/shell.nix
+    ../modules/home/editor.nix
+    ../modules/home/git.nix
     ../modules/home/theme.nix
     ../modules/home/desktop.nix
     ../modules/home/noctalia.nix

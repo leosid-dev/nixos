@@ -9,6 +9,12 @@
   # Firewall: enabled with sane defaults (allow outbound, deny inbound)
   networking.firewall.enable = true;
 
+  # ── Driver Modprobe Workarounds ─────────────────────────────────
+  # Disable ASPM on mt7921e to prevent PCIe power-saving disconnects / DMA timeouts
+  boot.extraModprobeConfig = ''
+    options mt7921e disable_aspm=Y
+  '';
+
   # ── Bluetooth ───────────────────────────────────────────────────
   hardware.bluetooth = {
     enable = true;

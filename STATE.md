@@ -1,6 +1,6 @@
 # STATE.md — Architecture, Design Principles & Current State
 
-> Last updated: 2026-08-01 · 34 nix files · 756 lines
+> Last updated: 2026-08-01 · 36 nix files · 820 lines
 
 ---
 
@@ -22,6 +22,7 @@ System modules are organised as **aspects** — self-contained concerns that can
 | **Sound** | `modules/system/sound.nix` | PipeWire stack + rtkit |
 | **Power** | `modules/system/power.nix` | Generic power management |
 | **Fonts** | `modules/system/fonts.nix` | System font packages |
+| **Gaming** | `modules/system/gaming.nix` | Steam, GameMode, Wine, MangoHud, Bottles |
 | **Hardware** | `modules/system/hardware/*.nix` | Per-device drivers & kernel modules |
 | **Users** | `modules/users/*.nix` | User accounts, groups, system-level shell identity |
 
@@ -52,7 +53,7 @@ User-space configuration flows through Home Manager, integrated as a NixOS modul
 | `modules/users/*.nix` | OS user accounts, groups, system shell | User-space dotfiles or host config |
 | `hosts/*/users.nix` | HM user → profile mapping | System-level config |
 | `modules/system/hardware/*.nix` | Generic driver aspects | Machine-specific mounts |
-| `modules/home/*.nix` | User-space programs & dotfiles (zsh, kitty, theme) | System services |
+| `modules/home/*.nix` | User-space programs & dotfiles (zsh, kitty, nvim, theme) | System services |
 | `profiles/*.nix` | HM module composition for a persona | Implementation details |
 
 ---
@@ -83,7 +84,7 @@ nixos/
 │
 ├── modules/
 │   ├── users/                             # Reusable system user declarations
-│   │   └── sid.nix                        # sid OS user, wheel/audio/video groups, zsh
+│   │   └── sid.nix                        # sid OS user, wheel/audio/video/input groups, zsh
 │   │
 │   ├── system/                            # NixOS system-level aspects
 │   │   ├── core/                          # ── Always-on fundamentals ──
@@ -105,12 +106,14 @@ nixos/
 │   │   │   ├── storage.nix               # NVMe SSD, fstrim
 │   │   │   └── usb.nix                   # USB4/Thunderbolt, bolt
 │   │   │
+│   │   ├── gaming.nix                     # Steam, GameMode, Wine, MangoHud, Bottles, Proton
 │   │   ├── sound.nix                      # PipeWire + ALSA + PulseAudio compat + rtkit
 │   │   ├── power.nix                      # Generic power management (governor, upower)
 │   │   └── fonts.nix                      # System fonts + fontconfig defaults
 │   │
 │   └── home/                              # Home Manager modules
 │       ├── shell.nix                      # Zsh shell config + completion/autosuggest/aliases
+│       ├── editor.nix                     # Neovim file editor + Nix LSPs + formatting
 │       ├── theme.nix                      # GTK, QT, cursor, dconf theming
 │       ├── desktop.nix                    # Niri user config, Wayland env vars, kitty, tools
 │       ├── noctalia.nix                   # Noctalia v5 shell + login manager
@@ -145,19 +148,17 @@ nixos/
 | Compositor | Niri | unstable |
 | Shell + Login | Noctalia v5 | flake input (cachix) |
 | Terminal | Kitty | stable |
+| File Editor | Neovim (`nvim`) | stable (`nixd` + `nixfmt`) |
+| Gaming Stack | Steam + GameMode + Wine + MangoHud + Bottles | stable |
 | Audio | PipeWire + EasyEffects DSP | stable / unstable |
 | Shell | Zsh (with autosuggestions & syntax highlighting) | stable |
 | Theme | Adwaita dark (GTK + QT + dconf) | stable |
 | Fonts | Inter, JetBrains Mono, FiraCode Nerd Font | stable |
-| Greeter | Noctalia built-in (no greetd) | — |
 
 ---
 
 ## Conventions
 
-- **User identity belongs in `modules/users/`.** User accounts, system shells, and sudo policies are user modules, keeping host configurations strictly machine-specific.
-- **One file = one concern.** No file should mix unrelated config.
-- **Comments at file top.** Every `.nix` file starts with a `#` comment block explaining what it owns.
-- **`lib.mkDefault` for overridables.** Sensible defaults use `mkDefault` so hosts can override without `mkForce`.
-- **Assets in `assets/`.** Static files live outside the Nix module tree.
-- **Profiles compose, modules implement.** `profiles/*.nix` only contain `imports` lists. Logic lives in `modules/`.
+- **User identity belongs in `modules/users/`.** User accounts, system shells, and sudo policies are user modules.
+- **Aspect-Oriented System Modules.** Modular toggles like `gaming.nix`, `sound.nix`, and `hardware/*.nix` allow hosts to selectively assemble features.
+- **Declarative Editor.** Neovim is configured at the user profile level with standard aliases (`vi`, `vim`), clipboard support, and Nix LSP capabilities.

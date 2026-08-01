@@ -33,6 +33,7 @@ lib.mkHost {
     ../../modules/system/sound.nix
     ../../modules/system/power.nix
     ../../modules/system/fonts.nix
+    ../../modules/system/gaming.nix
     ../../modules/system/hardware/amd-rembrandt.nix
     ../../modules/system/hardware/network.nix
     ../../modules/system/hardware/storage.nix
