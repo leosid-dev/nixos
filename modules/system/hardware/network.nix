@@ -1,7 +1,7 @@
 # modules/system/hardware/network.nix — Network + Bluetooth hardware.
 #
 # Covers: MediaTek MT7921e WiFi, MediaTek BT. (No onboard ethernet on this
-# chassis — USB-C dongles use the in-kernel r8169/axusb drivers.)
+# chassis — USB-C dongles use the in-kernel r8169/asix/cdc_ncm drivers.)
 # Gated by aspects.hardware.network.enable.
 { lib, config, ... }:
 let

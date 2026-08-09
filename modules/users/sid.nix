@@ -2,12 +2,17 @@
 #
 # Defines the OS user identity: groups, login shell, sudo policy.
 # This is a user concern, not a host concern — reusable across machines.
-# Gated by usersDef.sid.enable (a host opts a user in).
+# Gated by aspects.users.sid.enable (a host opts a user in).
 { lib, config, pkgs, ... }:
+let
+  cfg = config.aspects.users.sid;
+in
 {
-  options.usersDef.sid.enable = lib.mkEnableOption "system user sid";
+  options.aspects.users.sid = {
+    enable = lib.mkEnableOption "system user sid";
+  };
 
-  config = lib.mkIf config.usersDef.sid.enable {
+  config = lib.mkIf cfg.enable {
     users.users.sid = {
       isNormalUser = true;
       description = "sid";
@@ -18,8 +23,7 @@
         "audio"
         "input"
         "storage"
-        "gamemode"
-      ];
+      ] ++ lib.optionals config.aspects.gaming.enable [ "gamemode" ];
       shell = pkgs.zsh;
       linger = true; # Allow user services to start at boot
 

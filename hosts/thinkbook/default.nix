@@ -31,7 +31,7 @@ lib.mkHost {
     # ── Machine-specific hardware (filesystems, initrd) ────────────
     ./hardware.nix
 
-    # ── User modules (system-level identity, gated via usersDef.*) ─
+    # ── User modules (system-level identity, gated via aspects.users.*) ─
     ../../modules/users/sid.nix
 
     # ── Host identity & aspect selection ───────────────────────────
@@ -49,6 +49,8 @@ lib.mkHost {
         fonts.enable = true;
         ssh.enable = true;
         secrets.enable = true;
+
+        users.sid.enable = true;
 
         hardware = {
           amdRembrandt = {
@@ -69,8 +71,6 @@ lib.mkHost {
           };
         };
       };
-
-      usersDef.sid.enable = true;
     }
   ];
 }

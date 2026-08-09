@@ -1,6 +1,5 @@
 result
 result-*
-*.lock
 .direnv/
 __pycache__/
 *.pyc

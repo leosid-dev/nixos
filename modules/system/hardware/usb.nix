@@ -1,7 +1,8 @@
 # modules/system/hardware/usb.nix — USB / Thunderbolt / USB4 support.
 #
 # Plain USB support is always on with the aspect; Thunderbolt/USB4 is a
-# separate toggle (probe the machine with `lspci | grep -i usb4` to decide).
+# separate toggle. Probe the machine with `boltctl list` or
+# `lspci -nn | grep -Ei 'usb4|thunderbolt'` to decide.
 { lib, config, pkgs, ... }:
 let
   cfg = config.aspects.hardware.usb;
@@ -21,10 +22,11 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    boot.kernelModules = [
-      "thunderbolt"
-      "xhci_pci"
-    ];
+    boot.kernelModules = [ "xhci_pci" ];
+
+    # Thunderbolt/USB4 — kernel module + bolt daemon only when this
+    # machine actually exposes a USB4 router. Probe: `boltctl list`.
+    boot.kernelModules = lib.mkIf cfg.thunderbolt [ "thunderbolt" ];
 
     # Bolt daemon for Thunderbolt/USB4 device authorization
     services.hardware.bolt.enable = cfg.thunderbolt;

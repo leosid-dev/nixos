@@ -7,7 +7,6 @@
         "nix-command"
         "flakes"
       ];
-      auto-optimise-store = true;
 
       # Noctalia binary cache (additive — official cache.nixos.org stays default)
       extra-substituters = [ "https://noctalia.cachix.org" ];

@@ -1,56 +1,93 @@
-# modules/home/audio.nix — EasyEffects DSP for Dolby-like audio enhancement.
+# modules/home/audio.nix — EasyEffects audio DSP (generic).
 #
-# Uses EasyEffects (PipeWire plugin host) with a preset that approximates the
-# Windows Dolby/HARMAN tuning: harmonic bass synthesis + parametric EQ +
-# limiter. This machine (ThinkBook 16 G7 ARP, Realtek ALC257, no smart amps)
-# has no DSP on Linux, so this chain restores the missing bass/presence.
+# Generic EasyEffects deployment: package, user systemd service, and
+# zero-or-more preset files. Machine-specific tuning (EQ curve, codec
+# quirks, etc.) lives in the consuming profile/host — never here.
 #
-# The preset is loaded by a oneshot unit once the EasyEffects service is up;
-# EasyEffects' own autoload-on-device matching is too fragile to rely on here.
-{ pkgs, ... }:
+# Enable via `aspects.home.audio.enable = true;` and supply preset
+# definitions (name + source file). A oneshot unit loads the chosen
+# preset once EasyEffects is running.
+{ config, lib, pkgs, ... }:
 let
-  easyeffects = pkgs.unstable.easyeffects;
+  cfg = config.aspects.home.audio;
 in
 {
-  home.packages = [
-    easyeffects
-    pkgs.helvum # PipeWire patchbay for debugging audio routing
-  ];
+  options.aspects.home.audio = {
+    enable = lib.mkEnableOption "EasyEffects audio DSP with optional presets";
 
-  # Deploy the Dolby-approximation DSP chain preset
-  xdg.configFile."easyeffects/output/dolby-approximation.json".source =
-    ../../assets/easyeffects/dolby-approximation.json;
-
-  # EasyEffects as a D-Bus activated service, tied to the graphical session
-  systemd.user.services.easyeffects = {
-    Unit = {
-      Description = "EasyEffects — PipeWire audio DSP";
-      After = [ "pipewire.service" ];
-      Requires = [ "pipewire.service" ];
-      PartOf = [ "graphical-session.target" ];
+    presets = lib.mkOption {
+      type = lib.types.listOf (lib.types.submodule {
+        options = {
+          name = lib.mkOption {
+            type = lib.types.str;
+            description = "Preset name (also the filename without .json).";
+          };
+          file = lib.mkOption {
+            type = lib.types.path;
+            description = "Path to the EasyEffects preset JSON.";
+          };
+          loadOnStart = lib.mkOption {
+            type = lib.types.bool;
+            default = false;
+            description = "Load this preset via a oneshot unit on session start.";
+          };
+        };
+      });
+      default = [ ];
+      description = "EasyEffects presets to deploy and (optionally) auto-load.";
     };
-    Service = {
-      Type = "dbus";
-      BusName = "com.github.wwmm.easyeffects";
-      ExecStart = "${easyeffects}/bin/easyeffects --gapplication-service";
-      Restart = "on-failure";
-      RestartSec = 5;
-    };
-    Install.WantedBy = [ "graphical-session.target" ];
   };
 
-  # Load the Dolby-approximation preset once EasyEffects is running
-  systemd.user.services.easyeffects-dolby-preset = {
-    Unit = {
-      Description = "Load the EasyEffects Dolby-approximation preset";
-      After = [ "easyeffects.service" ];
-      Requires = [ "easyeffects.service" ];
-      PartOf = [ "graphical-session.target" ];
+  config = lib.mkIf cfg.enable {
+    home.packages = [
+      pkgs.easyeffects
+      pkgs.helvum # PipeWire patchbay for debugging audio routing
+    ];
+
+    # Deploy each preset under EasyEffects' standard directory layout
+    xdg.configFile = lib.listToAttrs (map
+      (p: {
+        name = "easyeffects/output/${p.name}.json";
+        value = { source = p.file; };
+      })
+      cfg.presets);
+
+    # EasyEffects as a D-Bus activated service, tied to the graphical session
+    systemd.user.services.easyeffects = {
+      Unit = {
+        Description = "EasyEffects — PipeWire audio DSP";
+        After = [ "pipewire.service" ];
+        Requires = [ "pipewire.service" ];
+        PartOf = [ "graphical-session.target" ];
+      };
+      Service = {
+        Type = "dbus";
+        BusName = "com.github.wwmm.easyeffects";
+        ExecStart = "${pkgs.easyeffects}/bin/easyeffects --gapplication-service";
+        Restart = "on-failure";
+        RestartSec = 5;
+      };
+      Install.WantedBy = [ "graphical-session.target" ];
     };
-    Service = {
-      Type = "oneshot";
-      ExecStart = "${easyeffects}/bin/easyeffects --load-preset dolby-approximation";
-    };
-    Install.WantedBy = [ "graphical-session.target" ];
+
+    # One oneshot per preset that wants to auto-load
+    systemd.user.services = lib.listToAttrs (map
+      (p: {
+        name = "easyeffects-load-${p.name}";
+        value = lib.mkIf p.loadOnStart {
+          Unit = {
+            Description = "Load EasyEffects preset '${p.name}'";
+            After = [ "easyeffects.service" ];
+            Requires = [ "easyeffects.service" ];
+            PartOf = [ "graphical-session.target" ];
+          };
+          Service = {
+            Type = "oneshot";
+            ExecStart = "${pkgs.easyeffects}/bin/easyeffects --load-preset ${p.name}";
+          };
+          Install.WantedBy = [ "graphical-session.target" ];
+        };
+      })
+      (lib.filter (p: p.loadOnStart) cfg.presets));
   };
 }

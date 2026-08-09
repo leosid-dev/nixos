@@ -1,18 +1,91 @@
-##Nixos declarative config with minimalistic approach but agnostic architecture
-  - Use flakes with uptodate schema with unstable and stable version pinning
-  - use home manager via flakes for user config
-  - the module architecture's intent should be balanced on its categorization and configurability
-  - ask before making any sensible selections on your own with pros/con context 
-  
-####Phase-1(Flakes and module development)
-  - Flakes toplevel should be agnostic to system/host configuration and user management(hm) and maintain a modular/layered architecture(ASPECT-ORIENTED)
-  - Modules make use of pure functions as much as possible for robust evaluations and use layered architecture for customizability(ASPECT-ORIENTED)
-  - Start with system configuration with a neat sensible defaults
-  - use niri as compositor, noctalia v5 for shell via hm; login via noctalia-greeter (greetd-based — a system module, since greeters run pre-login and cannot be managed by home-manager)
-  - add minimal sensible system packages with unstable/stable selection for packages
-  - ADD/SET ALL THE ENVIRONMENT VARIABLES/PACKAGES REQUIRED FOR UNIFORM USER EXPERIENCE INTEGRATION (like shell, themes, fonts, portals, compositors and window manager compatabilities, etc)
-  
-####Phase-2(Customized hardware configuration and utilities for controlling performance/efficiency characteristics)
-  - probe the current system - Lenovo Thinkbook 16 ARP - ryzen 7 7735hs, 680m igpu, 16 gigs ram. probe and enumerate all the relevant system resources for exact specs
-  - ensure all the drivers and kernel modules required are declared (main system, acpi, chipset, pci peripherals, storage(ssd), thunderbolt/usb4, wifi/bluetooth ,etc.. (only applicable ones))
-  - the sound experience is worse than windows due to absence of dolby support. need a novel way (either via alsa, pipewire with pulse support to mitigate this performance degradation)
+## NixOS declarative config — contract
+
+A minimalistic, aspect-oriented, multi-host NixOS configuration.
+
+### Source of truth
+
+- **AGENTS.md** (this file) — the *contract*: rules the repo must honour.
+- **STATE.md** — the *snapshot*: current tree, target machine, software stack.
+
+If they conflict, AGENTS.md wins; STATE.md is updated to match after a refactor.
+
+### Hard rules
+
+1. **Flakes, no exceptions.** `flake.nix` is the entry point. `flake.lock` is
+   committed (do not add `*.lock` to `.gitignore`).
+2. **Stable + unstable pinning.** `nixpkgs` → `nixos-26.05`; `nixpkgs-unstable`
+   → `nixos-unstable`. Channels are constructed in `lib/channels.nix` and
+   exposed as `pkgs` (stable) + `pkgs.unstable` (unstable). Package policy
+   (`allowUnfree`, etc.) is *host data*, never embedded in modules.
+3. **Home Manager via flakes.** Wired in `lib/mkHost.nix`; users declare their
+   HM profile in `hosts/*/users.nix`. `useGlobalPkgs = true`.
+4. **Agnostic toplevel.** `flake.nix` and `lib/` must NOT mention any host,
+   user, or machine-specific fact. Host discovery is `hosts/default.nix`'s
+   `readDir` job.
+5. **Pure functions in `lib/`.** Every helper takes data in, returns data
+   out. No side effects, no `builtins.currentSystem`, no I/O.
+6. **One aspect tree.** Everything toggleable lives under `aspects.*`. System
+   aspects (`aspects.{core,secrets,desktop,sound,power,fonts,gaming,ssh}`),
+   hardware aspects (`aspects.hardware.{amdRembrandt,network,storage,usb}`),
+   user aspects (`aspects.users.*`), and home aspects (`aspects.home.*`) all
+   share the same shape: `aspects.X = { enable = mkEnableOption ...; ... }`.
+   Single-leaf aspects use `mkEnableOption` directly; multi-leaf aspects use
+   nested-attrset style with `let cfg = config.aspects.X; in {...}`.
+7. **Aspect-oriented, layered.** Modules own *one* concern. Split when a
+   module bundles >1 concern (e.g. `desktop.nix` was decomposed into
+   `niri.nix` + `terminal.nix` + `wayland.nix`). Layer purity: generic
+   modules never hardcode machine-specific facts (codec, NIC, EQ curve).
+8. **No duplication.** Each value has exactly one canonical source:
+   - `EDITOR` / `VISUAL` → `programs.neovim.defaultEditor`
+   - `TERMINAL`         → `programs.kitty` (HM sets it)
+   - keymap             → `aspects.locale.keyMap` (console + greeter share)
+   - font family/cursor → `aspects.theme.font` / `aspects.theme.cursor`
+   - cachix key         → `modules/system/core/nix.nix`
+9. **Compositor + shell.** Niri (unstable) is the Wayland compositor;
+   Noctalia v5 shell via Home Manager; noctalia-greeter via greetd (system
+   module — greeters run pre-login, HM cannot manage them).
+10. **Ask before sensible selections.** When a choice has real tradeoffs,
+    surface them — do not silently pick.
+
+### HM gating model (hybrid)
+
+Home-Manager modules are **gated only when they have real per-persona
+variation**:
+
+| Module | Gate | Rationale |
+|---|---|---|
+| `shell.nix`     | always-on | CLI tools, no variation |
+| `editor.nix`    | always-on | Editor choice is profile-level |
+| `git.nix`       | always-on | Git config is profile-level |
+| `niri.nix`      | always-on (with desktop profile) | Compositor is required |
+| `wayland.nix`   | always-on (with desktop profile) | Required for the session |
+| `terminal.nix`  | `aspects.home.terminal.enable`  | Terminal choice varies |
+| `theme.nix`     | `aspects.home.theme.enable`     | Theme choice varies |
+| `noctalia.nix`  | `aspects.home.noctalia.enable`  | Shell choice varies |
+| `audio.nix`     | `aspects.home.audio.enable`     | DSP choice varies (presets option too) |
+
+`profiles/desktop.nix` is the only composition point that sets these
+aspects. To make a different persona, write a new profile.
+
+### Hardware aspects are opt-in
+
+Generic driver aspects live in `modules/system/hardware/` (network, storage,
+usb). Machine-specific quirks (MT7921e ASPM, AMD Rembrandt audio power-save)
+live in the same files but are gated behind sub-options. Hosts enable only
+the aspects their hardware needs.
+
+### Phase-1 deliverables
+
+- niri + noctalia + noctalia-greeter via the right layers
+- uniform Wayland session env at system level
+- minimal sensible core packages (CLI tools, no bloat)
+- font stack + GTK/QT/cursor theme at HM level
+- sops-nix age-via-SSH for secrets
+
+### Phase-2 deliverables
+
+- hardware coverage for the target machine (Ryzen 7 7735HS + Radeon 680M)
+- WiFi (MT7921e), BT, NVMe, USB4 drivers + sub-options
+- audio DSP via PipeWire + EasyEffects (Dolby-approximation preset for
+  Realtek ALC257; preset path is a profile option, not hardcoded in the
+  generic module)

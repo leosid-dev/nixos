@@ -21,7 +21,7 @@
 #       p4 = WINRE_DRV ntfs                      UUID 800A70D2-…
 #   WiFi: MediaTek MT7921e (14c3:0616)
 #   BT:   Foxconn MediaTek (btusb)
-#   NIC:  none onboard (USB-C/RJ45 dongles only; r8169/axusb drivers in-kernel)
+#   NIC:  none onboard (USB-C/RJ45 dongles only; r8169/asix/cdc_ncm drivers in-kernel)
 #   Audio: Realtek ALC257 (HDA) + AMD ACP — no CS35L41 smart amps
 #   USB4: Rembrandt USB4 router present (1022:15d6/15d7/162f)
 {
