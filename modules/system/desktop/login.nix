@@ -8,9 +8,13 @@
 # modules/system/core/locale.nix) so console + login never disagree.
 { lib, config, ... }:
 {
-  config = lib.mkIf config.aspects.desktop.enable {
+  # Determine whether greeter should be enabled: prefer explicit aspects.greeter.enable
+  let
+    greeterEnable = if config.aspects.greeter ? enable then config.aspects.greeter.enable else config.aspects.desktop.enable;
+  in
+  config = lib.mkIf greeterEnable {
     programs.noctalia-greeter = {
-      enable = true;
+      enable = greeterEnable;
       settings = {
         session.default = "niri";
         keyboard.layout = config.aspects.locale.keyMap;

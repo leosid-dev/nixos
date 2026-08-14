@@ -10,6 +10,7 @@
     grim
     slurp
     xwayland-satellite
+    libnotify
 
     # QT Wayland platform plugins (QT_QPA_PLATFORM=wayland;xcb is set at
     # system level; without these QT apps fall back to XWayland).

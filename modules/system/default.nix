@@ -16,5 +16,6 @@
     ./hardware/network.nix
     ./hardware/storage.nix
     ./hardware/usb.nix
+    ./secrets.nix
   ];
 }

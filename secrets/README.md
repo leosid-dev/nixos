@@ -1,47 +1,52 @@
-# secrets/ — sops-nix encrypted secrets
+# Secrets (sops-nix) — repository playbook
 
-Managed by [sops-nix](https://github.com/Mic92/sops-nix). Decrypted at runtime
-to `/run/secrets/` using the host SSH key — nothing secret is stored in the
-Nix store or in plaintext in this repo.
+This repository uses `sops` + `sops-nix` for secrets. The default backend is
+`age-ssh` (SSH-agent backed age encryption). This file documents the common
+workflows.
 
-## Layout
+Basic workflow
 
-- `secrets.yaml` — the encrypted store. Currently a **plaintext placeholder**
-  so Nix can evaluate; it will fail at `switch` until replaced (by design).
-- `.sops.yaml` — age key authorisation (author this before encrypting).
+1. Add a recipient (public SSH key):
 
-## One-time bootstrap (on the target machine, before the first switch)
+   - Add the admin's SSH public key to `secrets/recipients.json` (push a PR).
 
-```sh
-# 1. Install helpers
-nix profile install nixpkgs#age nixpkgs#ssh-to-age
+2. Encrypt a secret (`sops` with age-ssh):
 
-# 2. Derive an age public key from the host's SSH host key
-ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub
+   - Locally, ensure your SSH agent has the private key loaded (e.g. `ssh-add`).
+   - Create plaintext `secrets/users/sid/password` and run:
 
-# 3. Author secrets/.sops.yaml with the printed age key
-$EDITOR .sops.yaml
+       sops --encrypt --age <AGE-RECIPIENT> secrets/users/sid/password > secrets/users/sid/password.sops
 
-# 4. Create a yescrypt password hash
-mkpasswd -m yescrypt
+   - Commit the `.sops` file only. Do not commit plaintext.
 
-# 5. Create + encrypt the store
-sops secrets/secrets.yaml
-#   → add key `users/sid/password` = the hash from step 4
+3. Test rebuild locally:
 
-# 6. Switch (this now decrypts /run/secrets/users/sid/password)
-nixos-rebuild switch --flake ~/nixos#thinkbook
-```
+   - Make sure your SSH agent is available and run:
 
-> The module reads `sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ]`
-> (modules/system/core/secrets.nix) and exposes the secret at
-> `/run/secrets/users/sid/password` for the `sid` user account.
+       nixos-rebuild switch --flake .#thinkbook
 
-## Adding a new secret
+   - This will evaluate `sops-nix` and should populate the Nix store with
+     the decrypted secret path referenced by modules (see `modules/users/sid.nix`).
 
-1. `sops secrets/secrets.yaml` — add the key.
-2. Reference it in a module:
-   ```nix
-   sops.secrets."my/app/key" = { neededForUsers = true; }; # optional
-   ```
-3. Use `config.sops.secrets."my/app/key".path` in the module that needs it.
+CI considerations
+
+- CI systems can decrypt secrets by provisioning an ephemeral age key in the CI
+  secret store and making it available to the build. Prefer short-lived keys.
+- Alternatively, use a central secret manager (Vault/KMS) for CI; see decision
+  notes in the top-level documentation if you choose this route.
+
+Key rotation & recovery
+
+- To rotate a key: add the new public key to `secrets/recipients.json`, re-encrypt
+  secrets so both keys can decrypt, verify access, then remove the old key and
+  re-encrypt again.
+- Keep a recovery private key offline in a secure location (hardware token or
+  an encrypted drive in a safe). Test recovery regularly.
+
+Security notes
+
+- Decryption occurs at build/evaluation time and secrets end up in the Nix
+  store. Treat build artifacts and Nix store paths as sensitive.
+- Prefer hardware-backed SSH keys (YubiKey) and SSH agents to avoid storing
+  private key files on disk.
+

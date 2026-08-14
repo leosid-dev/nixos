@@ -1,5 +1,12 @@
 # profiles/desktop.nix — Home Manager profile for desktop users.
 #
+
+# New ricing knobs (added):
+# - aspects.home.niri.* : compositor layout/hotkeys/gaps/indicators
+# - aspects.home.noctalia.* : status modules, prompt style, theme sync
+# - aspects.home.editor.* : neovim LSP, colorscheme, leader
+# - aspects.greeter.* : system greeter theme/avatar/timeout (see modules/system/greeter.nix)
+
 # Composes the home modules needed for a full desktop experience and sets
 # the per-persona aspect toggles. Imported by hosts/*/users.nix for desktop
 # users.
