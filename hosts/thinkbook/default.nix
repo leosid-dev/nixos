@@ -38,6 +38,7 @@ lib.mkHost {
     {
       networking.hostName = "thinkbook";
       system.stateVersion = "26.05";
+      time.timeZone = "Asia/Kolkata";
       users.mutableUsers = false; # All users managed declaratively
 
       # Aspect selection: hosts declare intent, modules stay dumb.
@@ -51,17 +52,22 @@ lib.mkHost {
         ssh.enable = false;
         secrets.enable = true;
 
-        users.sid = {
+        # KVM/QEMU work VMs (Ubuntu LTS). Guest data is host policy:
+        # share this machine's home into the guest at the same path.
+        virtualisation = {
           enable = true;
-          # Add the operator's public key before enabling SSH on a deployed host.
-          authorizedKeys = [ ];
+          guests.ubuntu = {
+            hostPath = "/home/sid";
+            target = "/home/sid";
+            uid = 1000;
+            gid = 1000;
+          };
         };
 
+        users.sid.enable = true;
+
         hardware = {
-          amdRembrandt = {
-            enable = true;
-            audioPowerSave = 0;
-          };
+          amdRembrandt.enable = true;
           network = {
             enable = true;
             wifi = {

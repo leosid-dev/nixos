@@ -1,8 +1,9 @@
-# modules/system/core/locale.nix — Locale, timezone, console, hostname defaults.
+# modules/system/core/locale.nix — Locale, console keymap.
 #
 # The keyMap option (`aspects.locale.keyMap`) is the single source of truth
 # shared with noctalia-greeter (login.nix) so the console and the login
-# screen never disagree.
+# screen never disagree. Timezone and hostname are host facts, set in
+# hosts/*/default.nix — not core defaults.
 { lib, config, ... }:
 let
   cfg = config.aspects.locale;
@@ -22,10 +23,9 @@ in
       supportedLocales = [ "en_US.UTF-8/UTF-8" ];
     };
 
-    time.timeZone = lib.mkDefault "UTC";
-
-    console.keyMap = lib.mkDefault cfg.keyMap;
-
-    networking.hostName = lib.mkDefault "nixos";
+    console = {
+      keyMap = lib.mkDefault cfg.keyMap;
+      earlySetup = true; # Apply the keymap in initrd (LUKS prompts, etc.)
+    };
   };
 }

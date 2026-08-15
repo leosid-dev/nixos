@@ -2,7 +2,7 @@
 #
 # Every helper is a pure function. The attribute set returned here is
 # the *only* interface the rest of the repo consumes from `lib`.
-{ nixpkgs, nixpkgs-unstable, home-manager, noctalia, sops-nix, noctalia-greeter }:
+{ nixpkgs, nixpkgs-unstable, home-manager, noctalia, sops-nix, noctalia-greeter, nixvim, llm-agents }:
 let
   nixpkgsLib = nixpkgs.lib;
 
@@ -13,7 +13,7 @@ let
 
   # ── Host constructor (pure: system → NixOS configuration) ───────────────
   mkHost = import ./mkHost.nix {
-    inherit nixpkgsLib home-manager noctalia sops-nix noctalia-greeter;
+    inherit nixpkgsLib home-manager noctalia sops-nix noctalia-greeter nixvim llm-agents;
   };
 in
 {

@@ -5,7 +5,6 @@
     environment.systemPackages = with pkgs; [
       git
       curl
-      wget
       htop
       jq
       ripgrep

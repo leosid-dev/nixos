@@ -11,5 +11,9 @@
       extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
       config.common.default = "gtk";
     };
+
+    # dconf backend — required for Home Manager `dconf.settings` writes
+    # (theme.nix) to actually apply.
+    programs.dconf.enable = true;
   };
 }

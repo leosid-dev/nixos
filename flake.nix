@@ -23,6 +23,30 @@
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    nixvim = {
+      url = "github:nix-community/nixvim";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # LLM coding agents (opencode, grok, ...). Deliberately does NOT follow
+    # our stable nixpkgs: upstream builds/tests only against its own pinned
+    # nixpkgs-unstable, and following a stable branch would break. Keeping
+    # the pin also lets us substitute from cache.numtide.com.
+    llm-agents = {
+      url = "github:numtide/llm-agents.nix";
+    };
+  };
+
+  nixConfig = {
+    extra-substituters = [
+      "https://noctalia.cachix.org"
+      "https://cache.numtide.com"
+    ];
+    extra-trusted-public-keys = [
+      "noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4="
+      "niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g="
+    ];
   };
 
   outputs =
@@ -34,6 +58,8 @@
       noctalia,
       noctalia-greeter,
       sops-nix,
+      nixvim,
+      llm-agents,
       ...
     }:
     let
@@ -45,6 +71,8 @@
           noctalia
           noctalia-greeter
           sops-nix
+          nixvim
+          llm-agents
           ;
       };
 

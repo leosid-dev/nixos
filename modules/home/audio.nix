@@ -79,14 +79,30 @@ in
       })
       cfg.presets);
 
-    # Single `systemd.user.services` binding: the D-Bus-activated DSP
-    # service merged with one oneshot loader per loadOnStart preset.
-    systemd.user.services = {
-        easyeffects = {
+    # EasyEffects as a GApplication service, tied to the graphical session.
+    # Plain `simple` type: D-Bus activation races with Type=dbus caused
+    # restart loops; the app registers its bus name itself.
+    systemd.user.services.easyeffects = {
+      Unit = {
+        Description = "EasyEffects — PipeWire audio DSP";
+        After = [ "pipewire.service" ];
+        PartOf = [ "graphical-session.target" ];
+      };
+      Service = {
+        Type = "simple";
+        ExecStart = "${pkgs.easyeffects}/bin/easyeffects --gapplication-service";
+      };
+      Install.WantedBy = [ "graphical-session.target" ];
+    };
+
+    # One oneshot per preset that wants to auto-load
+    systemd.user.services = lib.listToAttrs (map
+      (p: {
+        name = "easyeffects-load-${p.name}";
+        value = {
           Unit = {
-            Description = "EasyEffects — PipeWire audio DSP";
-            After = [ "pipewire.service" ];
-            Requires = [ "pipewire.service" ];
+            Description = "Load EasyEffects preset '${p.name}'";
+            After = [ "easyeffects.service" ];
             PartOf = [ "graphical-session.target" ];
           };
           Service = {

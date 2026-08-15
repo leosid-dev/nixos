@@ -12,6 +12,7 @@
     ./power.nix
     ./fonts.nix
     ./gaming.nix
+    ./virtualisation.nix
     ./hardware/amd-rembrandt.nix
     ./hardware/network.nix
     ./hardware/storage.nix

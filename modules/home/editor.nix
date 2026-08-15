@@ -1,68 +1,92 @@
-# modules/home/editor.nix — Declarative Neovim configuration.
-{ config, lib, pkgs, ... }:
+# modules/home/editor.nix — Neovim via nixvim (fully declarative).
+#
+# Always-on (editor choice is profile-level). All plugins come from nixpkgs —
+# no runtime plugin managers, no downloads. EDITOR/VISUAL are set by nixvim's
+# `defaultEditor` (single source of truth, AGENTS.md rule 8).
+#
+# The colorscheme follows `aspects.theme.accent` (declared by theme.nix):
+# monochrome → mini-base16 grayscale, catppuccin-mocha → catppuccin,
+# anything else → tokyonight.
+{ config, lib, nixvim, ... }:
 let
-  cfg = config.aspects.home.editor;
+  accent = config.aspects.theme.accent or "adwaita";
+  useMonochrome = accent == "monochrome";
+  useCatppuccin = accent == "catppuccin-mocha";
 in
 {
-  options.aspects.home.editor = {
-    enable = lib.mkEnableOption "Neovim editor";
+  imports = [ nixvim.homeManagerModules.nixvim ];
 
-    neovim = {
-      enableLSP = lib.mkOption { type = lib.types.bool; default = true; };
-      colorscheme = lib.mkOption { type = lib.types.str; default = "tokyonight"; };
-      leader = lib.mkOption { type = lib.types.str; default = " "; };
-    };
-  };
-
-  config = lib.mkIf cfg.enable {
-    programs.neovim = {
+  config = {
+    programs.nixvim = {
       enable = true;
       defaultEditor = true;
       viAlias = true;
       vimAlias = true;
 
-      extraPackages = with pkgs; [ nixd nixfmt-rfc-style ];
+      globals.mapleader = " ";
 
-      # Keep plugins in the Nix closure. Neovim must not clone mutable state
-      # into $XDG_DATA_HOME during startup.
-      plugins = with pkgs.vimPlugins; [
-        nvim-lspconfig
-        telescope-nvim
-        tokyonight-nvim
+      opts = {
+        termguicolors = true;
+        number = true;
+        relativenumber = true;
+        expandtab = true;
+        shiftwidth = 2;
+        tabstop = 2;
+        updatetime = 300;
+        completeopt = "menu,menuone,noselect";
+      };
+
+      clipboard.register = "unnamedplus";
+
+      colorschemes = {
+        catppuccin = {
+          enable = useCatppuccin;
+          settings.flavour = "mocha";
+        };
+        tokyonight.enable = !useMonochrome && !useCatppuccin;
+        # Grayscale palette: base00 is true black to match the shell theme.
+        mini-base16 = {
+          enable = useMonochrome;
+          settings.palette = {
+            base00 = "#000000";
+            base01 = "#141414";
+            base02 = "#262626";
+            base03 = "#3d3d3d";
+            base04 = "#8c8c8c";
+            base05 = "#b3b3b3";
+            base06 = "#d6d6d6";
+            base07 = "#f5f5f5";
+            base08 = "#e6e6e6";
+            base09 = "#c4c4c4";
+            base0A = "#bdbdbd";
+            base0B = "#adadad";
+            base0C = "#a3a3a3";
+            base0D = "#999999";
+            base0E = "#8c8c8c";
+            base0F = "#7a7a7a";
+          };
+        };
+      };
+
+      plugins = {
+        lsp = {
+          enable = true;
+          servers.nixd.enable = true;
+        };
+        treesitter.enable = true;
+        telescope.enable = true;
+        cmp.enable = true;
+        which-key.enable = true;
+        gitsigns.enable = true;
+        web-devicons.enable = true;
+      };
+
+      keymaps = [
+        { key = "<leader>ff"; action = "<cmd>Telescope find_files<cr>"; }
+        { key = "<leader>fg"; action = "<cmd>Telescope live_grep<cr>"; }
+        { key = "<leader>fb"; action = "<cmd>Telescope buffers<cr>"; }
+        { key = "<leader>fs"; action = "<cmd>Telescope lsp_document_symbols<cr>"; }
       ];
-
-      extraLuaConfig = ''
-        vim.g.mapleader = ${builtins.toJSON cfg.neovim.leader}
-        vim.g.maplocalleader = vim.g.mapleader
-
-        vim.opt.termguicolors = true
-        vim.opt.number = true
-        vim.opt.relativenumber = true
-        vim.opt.expandtab = true
-        vim.opt.shiftwidth = 2
-        vim.opt.tabstop = 2
-        vim.opt.updatetime = 300
-        vim.opt.completeopt = { "menu", "menuone", "noselect" }
-        vim.opt.clipboard = "unnamedplus"
-
-        local map = vim.keymap.set
-        map("n", "<leader>ff", "<cmd>Telescope find_files<cr>")
-        map("n", "<leader>fg", "<cmd>Telescope live_grep<cr>")
-        map("n", "<leader>fb", "<cmd>Telescope buffers<cr>")
-        map("n", "<leader>fs", "<cmd>Telescope lsp_document_symbols<cr>")
-
-        ${lib.optionalString cfg.neovim.enableLSP ''
-          local lspconfig = require("lspconfig")
-          lspconfig.nixd.setup({})
-          map("n", "<leader>r", vim.lsp.buf.rename)
-          map("n", "<leader>f", function()
-            vim.lsp.buf.format({ async = true })
-          end)
-        ''}
-
-        local colorscheme = ${builtins.toJSON cfg.neovim.colorscheme}
-        pcall(vim.cmd, "colorscheme " .. colorscheme)
-      '';
     };
   };
 }
