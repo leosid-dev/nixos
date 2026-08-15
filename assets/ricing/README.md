@@ -1,13 +1,22 @@
-Ricing cheat sheet — Niri, Noctalia, Greeter, Neovim
+# Ricing cheat sheet — Niri, Noctalia, Greeter, Kitty, Neovim
 
 Overview
-- This document explains the ricing knobs introduced under `aspects.*` and gives quick examples for overriding them per-profile or per-host.
-- Canonical accent: `aspects.theme.accent`. All components (Noctalia, Niri, Greeter, Neovim, Kitty) should read from this single source.
+- Every ricing knob lives under the `aspects.*` option tree. Persona defaults
+  are set in `profiles/desktop.nix`; per-host overrides go in
+  `hosts/<host>/users.nix` (Home Manager values) or `hosts/<host>/default.nix`
+  (system values).
+- Canonical theme values: `aspects.theme.{font,cursor,mode,accent}` (owned by
+  `modules/home/theme.nix`). Kitty, GTK/QT/dconf, and Noctalia all read from
+  this single source — do not duplicate font or cursor values elsewhere.
+- Cross-boundary rule: NixOS modules never read Home Manager values. The
+  greeter's keyboard layout follows the system-owned `aspects.locale.keyMap`.
 
-Quick start (what to enable)
-- Desktop persona (profiles/desktop.nix) already imports the new modules; to enable/override per host, set `aspects.*` values in `hosts/<host>/users.nix` or a profile override.
+Niri (`modules/home/niri.nix`, `aspects.home.niri`)
+- Generates `~/.config/niri/config.kdl` from `gaps`, `centerFocused`,
+  `showIndicators` (plus the fixed bind set: kitty spawn, vim-style
+  focus/move, screenshot-to-clipboard).
 
-Example: change Niri gaps and disable indicators (host-level)
+Example: wider gaps, no indicators
 
   aspects.home.niri = {
     enable = true;
@@ -15,7 +24,11 @@ Example: change Niri gaps and disable indicators (host-level)
     showIndicators = false;
   };
 
-Example: change Noctalia prompt and disable media widget
+Noctalia (`modules/home/noctalia.nix`, `aspects.home.noctalia`)
+- `programs.noctalia.settings` receives `theme.mode`/`theme.accent` from
+  `aspects.theme`, plus `prompt.style` and `status.*` toggles.
+
+Example: minimal prompt, no media widget
 
   aspects.home.noctalia = {
     enable = true;
@@ -23,71 +36,53 @@ Example: change Noctalia prompt and disable media widget
     status.media = false;
   };
 
-Greeter settings are system-owned by the desktop aspect. Its keyboard layout
-follows `aspects.locale.keyMap`; theme values are not read across the
-NixOS/Home Manager module boundary.
+Kitty (`modules/home/terminal.nix`, `aspects.home.terminal`)
+- Colors derive from `aspects.theme.mode` (dark/light palette); font comes
+  from `aspects.theme.font`. No independent font knob here.
 
-Neovim: quick override (set colorscheme or leader)
+Neovim (`modules/home/editor.nix`, `aspects.home.editor`)
+- Fully declarative: plugins come from `pkgs.vimPlugins` (lspconfig,
+  telescope, tokyonight) and config lives in `programs.neovim.extraLuaConfig`.
+  Nothing is downloaded at startup.
+- Tunables: `enableLSP`, `colorscheme`, `leader`; LSPs/servers from
+  `extraPackages` (`nixd` + `nixfmt-rfc-style` today).
+
+Example: comma leader, different colorscheme
 
   aspects.home.editor = {
-    default = "neovim";
+    enable = true;
     neovim.colorscheme = "catppuccin";
     neovim.leader = ",";
   };
 
-What the config files provide
-- Niri: `xdg.configFile."niri/config.kdl"` is generated from `aspects.home.niri`. It contains:
-  - `layout { gaps = <gaps>; center-focused-column = <centerFocused> }`
-  - Hotkeys: `Mod+Enter` (kitty), `Mod+h/j/k/l` focus, `Mod+Shift+...` move, `Mod+Shift+S` screenshot, `Mod+Shift+Y` clipboard helper
-  - Window indicators when `showIndicators = true`
+Greeter (`modules/system/desktop/login.nix`, system side)
+- Enabled by `aspects.desktop.enable`; keyboard layout follows
+  `aspects.locale.keyMap`. No theme values are read across the module
+  boundary.
 
-- Noctalia: `programs.noctalia.settings` receives `theme.mode`, `theme.accent` (from `aspects.theme.accent`), `prompt.style`, and `status.*` booleans.
+Verification (run on a host with Nix installed)
+- `nix flake check`
+- `nix eval .#nixosConfigurations.thinkbook.config.system.build.toplevel.drvPath`
+- `nixos-rebuild build --flake .#thinkbook`, then `switch`
 
-- Greeter: `modules/system/desktop/login.nix` enables `programs.noctalia-greeter`
-  with the shared `aspects.locale.keyMap` keyboard layout.
-
-- Neovim: `xdg.configFile."nvim/init.lua"` and `xdg.configFile."nvim/lua/rc.lua"` are installed by Home Manager when `aspects.home.editor` chooses `neovim`.
-  - Bootstraps `folke/lazy.nvim` on first start
-  - Adds a concise plugin set (LSP, mason, null-ls, cmp, treesitter, telescope, which-key, gitsigns)
-  - Key mappings: `<leader>ff`, `<leader>fg`, `<leader>fb`, `<leader>fs`, `<leader>r`, `<leader>f`
-  - Mason ensure-installed list (best-effort): `lua-language-server`, `pyright`, `rust-analyzer`, `bash-language-server`, `marksman`, `json-lsp`.
-
-Verification (static/eval/build)
-- On a machine with Nix installed, run these non-mutating checks:
-  - `nix eval .#lib`
-  - `nix eval .#nixosConfigurations.thinkbook.config`
-- Build checks:
-  - `nix build .#homeConfigurations.sid.activationPackage`
-  - `nix build .#nixosConfigurations.thinkbook.config.system.build.toplevel`
-
-Manual functional checks (VM or test host)
-- Greeter: boot the machine and confirm the Noctalia greeter starts with the
-  configured keyboard layout.
-- Niri: login, verify layout: `gaps` and `centerFocused` behavior; test hotkeys (kitty spawn, workspace focus, window move); screenshot hotkey copies image to clipboard.
-- Noctalia: check status modules (clock/battery/network/media/workspaceIndicator) match `aspects.home.noctalia.status` booleans; check prompt style.
-- Neovim: open a project (Rust/Python), allow Mason to install an LSP (e.g., `pyright`), confirm LSP diagnostics and keymaps work.
+Manual functional checks
+- Greeter: boot, confirm layout matches `aspects.locale.keyMap`.
+- Niri: verify gaps/center-focused behavior and hotkeys; `Mod+Shift+S`
+  copies a screenshot to the clipboard.
+- Noctalia: status widgets and prompt match the aspect values.
+- Neovim: open a `.nix` file, confirm `nixd` attaches and `leader+f` formats.
 
 Troubleshooting
-- If changes don't appear:
-  - Confirm host/profile actually sets the `aspects.*` values (profile import order matters).
-  - Rebuild Home Manager configuration: `home-manager switch` (or use `nix build` activation package).
-  - For system greeter changes, rebuild the system and/or restart `greetd`.
+- Changes not visible: confirm the profile/host actually sets the
+  `aspects.*` value (profile defaults use `lib.mkDefault`, host wins).
+- User-side changes apply after `nixos-rebuild switch` (HM is integrated as
+  a NixOS module here; no standalone `home-manager` build is wired in the
+  flake outputs).
+- Greeter/system changes require a system rebuild (and the next greetd
+  session).
 
-- If lazy.nvim doesn't bootstrap on first run:
-  - Ensure the machine has network access and `git` available. The bootstrap clones `https://github.com/folke/lazy.nvim`.
-  - You can manually install lazy.nvim into `~/.local/share/nvim/lazy/lazy.nvim` and restart Neovim.
-
-Notes and limitations
-- The Neovim `rc.lua` is intentionally minimal — it's meant to be a workable, opinionated starting point. Treat it as a scaffold to extend.
-- The Noctalia and Greeter wiring assume the upstream modules expose compatible
-  option names. If the pinned inputs differ, adjust `modules/home/noctalia.nix`
-  and `modules/system/desktop/login.nix` together.
-- This repo's `flake.nix` pins may require `nix` >= 2.4 with flakes enabled or `nix` from the flakes-ready environment. See your distro's docs.
-
-Where to override (summary)
-- Profile-level: `profiles/desktop.nix` — good for persona-wide default adjustments.
-- Host-level: `hosts/<hostname>/users.nix` or the host's `default.nix` — for machine-specific overrides.
-
-If you'd like I can also:
-- Add a short `assets/ricing/CONFIG_EXAMPLES.md` with more copy/paste snippets for common customizations.
-- Produce a unified `git` patch of my changes so you can apply/commit locally.
+Upstream coupling
+- Noctalia and the greeter assume the pinned flake inputs expose
+  `programs.noctalia` and `programs.noctalia-greeter` options. If inputs are
+  re-pinned, verify `modules/home/noctalia.nix` and
+  `modules/system/desktop/login.nix` together.

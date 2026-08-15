@@ -1,6 +1,6 @@
 # STATE.md — Architecture, Design Principles & Current State
 
-> Last updated: 2026-08-15 · 40 nix files · declarative refactor pass
+> Last updated: 2026-08-15 · 40 nix files · static bugfix pass (audio unit merge, qt-wayland attrs, ricing docs)
 
 ---
 
@@ -99,7 +99,7 @@ nixos/
 │   │   ├── gaming.nix                     # Steam, GameMode, Wine, MangoHud, Bottles
 │   │   ├── sound.nix                      # PipeWire + ALSA + PulseAudio compat + rtkit
 │   │   ├── power.nix                      # power-profiles-daemon + upower
-│   │   └── fonts.nix                      # System font packages
+│   │   ├── fonts.nix                      # System font packages
 │   │   ├── core/                          # Always-on fundamentals (aspects.core.enable)
 │   │   │   ├── default.nix                # Index
 │   │   │   ├── boot.nix                   # systemd-boot, kernel, tmpfs, zram
@@ -134,8 +134,11 @@ nixos/
 │   └── desktop.nix                        # Composes all HM modules + sets aspects.home.* defaults
 │
 └── assets/
-    └── easyeffects/
-        └── dolby-approximation.json       # EE7 preset (ThinkBook ALC257) — wired by desktop profile
+    ├── easyeffects/
+    │   └── dolby-approximation.json       # EE7 preset (ThinkBook ALC257) — wired by desktop profile
+    └── ricing/
+        ├── README.md                      # Ricing cheat sheet (aspect knobs, override examples)
+        └── NIX-CHEATSHEET.md              # Nix/nixos-rebuild quick reference
 ```
 
 ---

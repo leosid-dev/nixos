@@ -5,11 +5,38 @@
 # quirks, etc.) lives in the consuming profile/host — never here.
 #
 # Enable via `aspects.home.audio.enable = true;` and supply preset
-# definitions (name + source file). A oneshot unit loads the chosen
-# preset once EasyEffects is running.
+# definitions (name + source file). Each preset marked `loadOnStart`
+# gets a oneshot unit that loads it once EasyEffects' D-Bus service
+# is reachable (bounded retry — the service activates on demand).
 { config, lib, pkgs, ... }:
 let
   cfg = config.aspects.home.audio;
+
+  autoLoad = lib.filter (p: p.loadOnStart) cfg.presets;
+
+  loadPresetScript = name:
+    pkgs.writeShellScript "easyeffects-load-${name}" ''
+      for _ in $(seq 30); do
+        ${pkgs.easyeffects}/bin/easyeffects --load-preset ${lib.escapeShellArg name} && exit 0
+        sleep 1
+      done
+      echo "easyeffects-load: preset '${name}' did not load in time" >&2
+      exit 1
+    '';
+
+  loaderService = p: {
+    Unit = {
+      Description = "Load EasyEffects preset '${p.name}'";
+      After = [ "easyeffects.service" ];
+      Wants = [ "easyeffects.service" ];
+      PartOf = [ "graphical-session.target" ];
+    };
+    Service = {
+      Type = "oneshot";
+      ExecStart = "${loadPresetScript p.name}";
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
 in
 {
   options.aspects.home.audio = {
@@ -41,7 +68,7 @@ in
   config = lib.mkIf cfg.enable {
     home.packages = [
       pkgs.easyeffects
-      pkgs.helvum # PipeWire patchbay for debugging audio routing
+      pkgs.helvum
     ];
 
     # Deploy each preset under EasyEffects' standard directory layout
@@ -52,42 +79,31 @@ in
       })
       cfg.presets);
 
-    # EasyEffects as a D-Bus activated service, tied to the graphical session
-    systemd.user.services.easyeffects = {
-      Unit = {
-        Description = "EasyEffects — PipeWire audio DSP";
-        After = [ "pipewire.service" ];
-        Requires = [ "pipewire.service" ];
-        PartOf = [ "graphical-session.target" ];
-      };
-      Service = {
-        Type = "dbus";
-        BusName = "com.github.wwmm.easyeffects";
-        ExecStart = "${pkgs.easyeffects}/bin/easyeffects --gapplication-service";
-        Restart = "on-failure";
-        RestartSec = 5;
-      };
-      Install.WantedBy = [ "graphical-session.target" ];
-    };
-
-    # One oneshot per preset that wants to auto-load
-    systemd.user.services = lib.listToAttrs (map
-      (p: {
-        name = "easyeffects-load-${p.name}";
-        value = lib.mkIf p.loadOnStart {
+    # Single `systemd.user.services` binding: the D-Bus-activated DSP
+    # service merged with one oneshot loader per loadOnStart preset.
+    systemd.user.services = {
+        easyeffects = {
           Unit = {
-            Description = "Load EasyEffects preset '${p.name}'";
-            After = [ "easyeffects.service" ];
-            Requires = [ "easyeffects.service" ];
+            Description = "EasyEffects — PipeWire audio DSP";
+            After = [ "pipewire.service" ];
+            Requires = [ "pipewire.service" ];
             PartOf = [ "graphical-session.target" ];
           };
           Service = {
-            Type = "oneshot";
-            ExecStart = "${pkgs.easyeffects}/bin/easyeffects --load-preset ${p.name}";
+            Type = "dbus";
+            BusName = "com.github.wwmm.easyeffects";
+            ExecStart = "${pkgs.easyeffects}/bin/easyeffects --gapplication-service";
+            Restart = "on-failure";
+            RestartSec = 5;
           };
           Install.WantedBy = [ "graphical-session.target" ];
         };
-      })
-      (lib.filter (p: p.loadOnStart) cfg.presets));
+      }
+      // lib.listToAttrs (map
+        (p: {
+          name = "easyeffects-load-${p.name}";
+          value = loaderService p;
+        })
+        autoLoad);
   };
 }

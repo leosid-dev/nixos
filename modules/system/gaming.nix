@@ -15,18 +15,13 @@
       gamescopeSession.enable = true;
     };
 
-    # Feral GameMode for CPU/GPU performance optimization during gameplay
+    # Feral GameMode for CPU/GPU performance optimization during gameplay.
+    # No custom.start/end notifications: those scripts run inside the root
+    # gamemoded daemon, outside any user session, so desktop notifications
+    # can never reach the compositor.
     programs.gamemode = {
       enable = true;
-      settings = {
-        general = {
-          renice = 10;
-        };
-        custom = {
-          start = "${pkgs.libnotify}/bin/notify-send 'GameMode Started'";
-          end = "${pkgs.libnotify}/bin/notify-send 'GameMode Ended'";
-        };
-      };
+      settings.general.renice = 10;
     };
 
     # ── Gaming & Compatibility Packages ──────────────────────────────
