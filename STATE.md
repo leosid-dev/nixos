@@ -1,6 +1,6 @@
 # STATE.md — Architecture, Design Principles & Current State
 
-> Last updated: 2026-08-09 · 41 nix files · 1468 lines · post-refactor
+> Last updated: 2026-08-15 · 43 nix files · post-bugfix refactor
 
 ---
 
@@ -10,14 +10,14 @@
 Every piece of system and user configuration is expressed in Nix — no imperative scripts, no hidden state. The configuration aims for the smallest surface area that delivers a complete, polished desktop experience.
 
 ### 2. Agnostic Top-Level
-`flake.nix` knows nothing about specific hosts, users, or hardware. It wires inputs (nixpkgs, home-manager, noctalia, noctalia-greeter, sops-nix) into a pure `lib`, and delegates host discovery to `hosts/default.nix` which auto-scans subdirectories. Adding a new machine means creating a directory under `hosts/` — zero changes to the flake.
+`flake.nix` knows nothing about specific hosts, users, or hardware. It wires inputs (nixpkgs, home-manager, noctalia, noctalia-greeter, sops-nix, nixvim, llm-agents) into a pure `lib`, and delegates host discovery to `hosts/default.nix` which auto-scans subdirectories. Adding a new machine means creating a directory under `hosts/` — zero changes to the flake.
 
 ### 3. Aspect-Oriented Modules & Modular Users
 System, hardware, user, and home modules are organised as **aspects** — self-contained concerns that can be composed or removed per host or per persona:
 
 | Namespace | Examples | What it owns |
 |---|---|---|
-| `aspects.{core,secrets,desktop,sound,power,fonts,gaming,ssh}` | System aspects | Nix settings, boot, locale, sound stack, gaming, … |
+| `aspects.{core,secrets,desktop,sound,power,fonts,gaming,ssh,virtualisation}` | System aspects | Nix settings, boot, locale, sound stack, gaming, KVM/virtiofs, … |
 | `aspects.hardware.{amdRembrandt,network,storage,usb}` | Hardware aspects | Per-device drivers, kernel modules, quirks |
 | `aspects.users.*` | User identity | OS-level user account declaration |
 | `aspects.home.*` | Home-Manager toggles | Per-persona HM opt-ins (audio, theme, …) |
@@ -58,7 +58,7 @@ User-space configuration flows through Home Manager, integrated as a NixOS modul
 ### 8. Hybrid HM Gating
 Only HM modules with real per-persona variation are gated:
 - **Always-on:** `shell`, `editor`, `git`, `niri`, `wayland`
-- **Gated via `aspects.home.*`:** `terminal`, `theme`, `noctalia`, `audio`
+- **Gated via `aspects.home.*`:** `terminal`, `theme`, `noctalia`, `audio`, `agents`
 
 A persona is a profile; `profiles/desktop.nix` is the only one today.
 
@@ -93,47 +93,53 @@ nixos/
 │   │
 │   ├── system/                            # NixOS system-level aspects
 │   │   ├── default.nix                    # Index: imports core, desktop, ssh, sound, power,
-│   │   │                                  #   fonts, gaming, hardware/* (Core on; rest opt-in)
+│   │   │                                  #   fonts, gaming, virtualisation, hardware/* (Core on; rest opt-in)
 │   │   ├── ssh.nix                        # Hardened OpenSSH (aspects.ssh.enable)
 │   │   ├── gaming.nix                     # Steam, GameMode, Wine, MangoHud, Bottles
+│   │   ├── virtualisation.nix             # KVM/QEMU + libvirt + virtiofs home sharing (aspects.virtualisation.*)
 │   │   ├── sound.nix                      # PipeWire + ALSA + PulseAudio compat + rtkit
 │   │   ├── power.nix                      # power-profiles-daemon + upower
-│   │   └── fonts.nix                      # System fonts + fontconfig defaults
+│   │   ├── fonts.nix                      # System fonts + fontconfig defaults
 │   │   ├── core/                          # Always-on fundamentals (aspects.core.enable)
 │   │   │   ├── default.nix                # Index
-│   │   │   ├── boot.nix                   # systemd-boot, kernel, tmpfs, zram
-│   │   │   ├── locale.nix                 # i18n, timezone, console, aspects.locale.keyMap
-│   │   │   ├── nix.nix                    # Flakes, GC, store optimisation, cachix
+│   │   │   ├── boot.nix                   # systemd-boot (limit 5), kernel, tmpfs, zram
+│   │   │   ├── locale.nix                 # i18n, console keymap + earlySetup, aspects.locale.keyMap
+│   │   │   ├── nix.nix                    # Flakes, GC, store optimisation, binary caches
 │   │   │   ├── packages.nix               # Minimal CLI tools + nix-ld
 │   │   │   └── secrets.nix                # sops-nix (aspects.secrets.enable)
 │   │   ├── desktop/                       # Wayland desktop (aspects.desktop.enable)
 │   │   │   ├── default.nix                # Index
 │   │   │   ├── niri.nix                   # Niri compositor + uniform Wayland sessionVariables
-│   │   │   ├── portals.nix                # XDG desktop portals (GTK fallback)
+│   │   │   ├── portals.nix                # XDG desktop portals (GTK fallback) + dconf backend
 │   │   │   └── login.nix                  # noctalia-greeter (reads aspects.locale.keyMap)
 │   │   └── hardware/                      # Device-specific driver aspects
 │   │       ├── amd-rembrandt.nix          # AMD Ryzen 7 7735HS + Radeon 680M
 │   │       ├── network.nix                # WiFi (MT7921e + aspmFix knob), BT, firewall
-│   │       ├── storage.nix                # NVMe SSD, fstrim
+│   │       ├── storage.nix                # fstrim, udisks2, fwupd (manual LVFS updates)
 │   │       └── usb.nix                    # USB + USB4/Thunderbolt (bolt, opt-in knob)
 │   │
 │   └── home/                              # Home Manager modules
-│       ├── shell.nix                      # Zsh + fzf + eza + bat (always-on)
-│       ├── editor.nix                     # Neovim + Nix LSPs (always-on, sets EDITOR/VISUAL)
+│       ├── shell.nix                      # Zsh + fzf + eza + bat (always-on; flakePath option)
+│       ├── editor.nix                     # Neovim via nixvim (always-on, sets EDITOR/VISUAL)
 │       ├── git.nix                        # Git + Delta + lazygit (always-on)
-│       ├── niri.nix                       # Niri user config.kdl (always-on with desktop)
+│       ├── niri.nix                       # Niri user config.kdl: bezier overshoot easing, accent-keyed ring (always-on with desktop)
 │       ├── wayland.nix                    # grim/slurp/wl-clipboard/xwayland-satellite/qt-wayland
-│       ├── terminal.nix                   # Kitty (aspects.home.terminal.enable)
+│       ├── terminal.nix                   # Kitty, accent-keyed palette (aspects.home.terminal.enable)
 │       ├── theme.nix                      # GTK/QT/cursor/dconf (aspects.home.theme.enable; aspects.theme)
 │       ├── noctalia.nix                   # Noctalia v5 shell (aspects.home.noctalia.enable)
-│       └── audio.nix                      # EasyEffects DSP + presets option (aspects.home.audio.enable)
+│       ├── audio.nix                      # EasyEffects DSP + presets option (aspects.home.audio.enable)
+│       └── agents.nix                     # LLM agents from llm-agents.nix (aspects.home.agents.*)
 │
 ├── profiles/
 │   └── desktop.nix                        # Composes all HM modules + sets aspects.home.* defaults
 │
 └── assets/
-    └── easyeffects/
-        └── dolby-approximation.json       # EE7 preset (ThinkBook ALC257) — wired by desktop profile
+    ├── easyeffects/
+    │   └── dolby-approximation.json       # EE7 preset (ThinkBook ALC257) — wired by desktop profile
+    ├── ricing/
+    │   └── README.md                      # Ricing cheat sheet: aspect knobs, examples, checks
+    └── virt/
+        └── README.md                      # KVM runbook: VM creation, virtiofs XML, Venus, tuning
 ```
 
 ---
@@ -160,12 +166,15 @@ nixos/
 | Shell + Login | Noctalia v5 + noctalia-greeter | flake input (cachix) |
 | Secrets | sops-nix (age via SSH host ed25519) | flake input |
 | Terminal | Kitty | stable (auto-sets TERMINAL) |
-| File Editor | Neovim | stable (`nixd` + `nixfmt`, sets EDITOR/VISUAL) |
+| File Editor | Neovim via nixvim (nixd LSP, sets EDITOR/VISUAL) | flake input |
+| LLM Agents | opencode + grok via numtide/llm-agents.nix | flake input (own unstable pin, numtide cache) |
 | Gaming Stack | Steam + GameMode + Wine + MangoHud + Bottles | stable |
+| Virtualisation | KVM/QEMU (libvirt + virt-manager), virtiofs home sharing, virtio-gpu + Venus | stable |
 | Audio | PipeWire + EasyEffects DSP | stable |
 | Shell | Zsh (with autosuggestions & syntax highlighting) | stable |
-| Theme | Adwaita dark (GTK + QT + dconf) | stable |
+| Theme | Monochrome (true-black) via `aspects.theme.accent`; Adwaita GTK/QT + dconf; Niri focus-ring/background follow the accent | stable |
 | Fonts | Inter, JetBrains Mono, FiraCode Nerd Font | stable |
+| Firmware | fwupd (LVFS, manual `fwupdmgr update`) | stable |
 
 ---
 
@@ -190,8 +199,22 @@ nixos/
      paste the age pubkey
    - `sops secrets/secrets.yaml` → set `users/sid/password` to
      `mkpasswd -m yescrypt` hash
-   - `nix flake lock` (regenerates `flake.lock` now that it's no longer ignored)
+   - `nix flake lock` (regenerates `flake.lock` — also picks up the new
+     `nixvim` and `llm-agents` inputs)
 2. **Static gate:** `nix eval .#nixosConfigurations.thinkbook.config.system.build.toplevel.drvPath`
 3. **Full build:** `nixos-rebuild build --flake .#thinkbook` (then `switch`)
 4. **Audio preset:** EasyEffects autoloads `dolby-approximation` on session start
    (oneshot unit installed by the desktop profile).
+5. **Firmware:** `fwupdmgr refresh && fwupdmgr update` (manual, on demand).
+6. **LLM agents:** `opencode --version && grok --version`; auth is
+   imperative (`opencode auth login`, grok login) — nothing declarative.
+7. **Virtualisation:** `systemctl status libvirtd && virsh version`, then
+   follow `assets/virt/README.md`: `virt-disk ubuntu 64G`, create the
+   Ubuntu VM (UEFI, virtio-blk tuned, virtiofs share), run
+   `virtfs-setup-ubuntu` inside the guest, verify the shared home and
+   `vulkaninfo` (Venus).
+8. **Visual:** `niri validate` against the generated config, then check
+   the bezier overshoot/settle, radius-4 corners, grayscale focus ring on
+   true-black background, the flat macOS-style bar (workspaces/app icons
+   left, clock center, stats + performance toggle right) and the
+   top-center launcher.

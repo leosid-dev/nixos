@@ -25,7 +25,7 @@ If they conflict, AGENTS.md wins; STATE.md is updated to match after a refactor.
 5. **Pure functions in `lib/`.** Every helper takes data in, returns data
    out. No side effects, no `builtins.currentSystem`, no I/O.
 6. **One aspect tree.** Everything toggleable lives under `aspects.*`. System
-   aspects (`aspects.{core,secrets,desktop,sound,power,fonts,gaming,ssh}`),
+   aspects (`aspects.{core,secrets,desktop,sound,power,fonts,gaming,ssh,virtualisation}`),
    hardware aspects (`aspects.hardware.{amdRembrandt,network,storage,usb}`),
    user aspects (`aspects.users.*`), and home aspects (`aspects.home.*`) all
    share the same shape: `aspects.X = { enable = mkEnableOption ...; ... }`.
@@ -40,6 +40,8 @@ If they conflict, AGENTS.md wins; STATE.md is updated to match after a refactor.
    - `TERMINAL`         → `programs.kitty` (HM sets it)
    - keymap             → `aspects.locale.keyMap` (console + greeter share)
    - font family/cursor → `aspects.theme.font` / `aspects.theme.cursor`
+   - accent palette     → `aspects.theme.accent` (Noctalia, Kitty, Neovim,
+                          and Niri focus-ring/background all read it)
    - cachix key         → `modules/system/core/nix.nix`
 9. **Compositor + shell.** Niri (unstable) is the Wayland compositor;
    Noctalia v5 shell via Home Manager; noctalia-greeter via greetd (system
@@ -63,6 +65,7 @@ variation**:
 | `theme.nix`     | `aspects.home.theme.enable`     | Theme choice varies |
 | `noctalia.nix`  | `aspects.home.noctalia.enable`  | Shell choice varies |
 | `audio.nix`     | `aspects.home.audio.enable`     | DSP choice varies (presets option too) |
+| `agents.nix`    | `aspects.home.agents.enable`    | Agent selection varies (`packages` option) |
 
 `profiles/desktop.nix` is the only composition point that sets these
 aspects. To make a different persona, write a new profile.
