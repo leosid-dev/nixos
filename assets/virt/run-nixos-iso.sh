@@ -30,10 +30,11 @@ command -v qemu-img >/dev/null || {
 
 # Outbound-only user networking. Prefer slirp (-netdev user); fall back to
 # passt, which ships with newer QEMU builds that omit slirp.
+# Exact-line match: -w would falsely match 'vhost-user'.
 netdev=()
-if "$qemu" -netdev help 2>&1 | grep -qw user; then
+if "$qemu" -netdev help 2>&1 | grep -qx user; then
   netdev=(-netdev user,id=net0)
-elif "$qemu" -netdev help 2>&1 | grep -qw passt; then
+elif "$qemu" -netdev help 2>&1 | grep -qx passt; then
   command -v passt >/dev/null || {
     echo "error: qemu supports passt but the 'passt' binary is not on PATH." >&2
     exit 1
@@ -67,7 +68,7 @@ done
 # Prefer a graphical display that is actually compiled in.
 display=()
 for d in gtk sdl curses; do
-  if "$qemu" -display help 2>&1 | grep -qw "$d"; then
+  if "$qemu" -display help 2>&1 | grep -qx "$d"; then
     display=(-display "$d")
     break
   fi
