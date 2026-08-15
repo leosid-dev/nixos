@@ -23,7 +23,8 @@ in
         "audio"
         "input"
         "storage"
-      ] ++ lib.optionals config.aspects.gaming.enable [ "gamemode" ];
+      ] ++ lib.optionals config.aspects.gaming.enable [ "gamemode" ]
+        ++ lib.optionals config.aspects.virtualisation.enable [ "libvirtd" ];
       shell = pkgs.zsh;
       linger = true; # Allow user services to start at boot
 

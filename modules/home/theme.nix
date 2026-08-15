@@ -46,11 +46,14 @@ in
 
     accent = lib.mkOption {
       type = lib.types.str;
-      default = "adwaita";
+      default = "monochrome";
       description = ''
-        Accent palette name. Currently selects GTK theme name only
-        (adwaita | catppuccin-mocha | ...); toolkit-specific palettes are
-        a future extension.
+        Accent palette name; the single source of truth for colors across
+        Noctalia (palette), Kitty (terminal colors) and Neovim (colorscheme).
+        Known values: monochrome (grayscale, true-black surfaces),
+        catppuccin-mocha, adwaita. GTK apps always use the Adwaita theme
+        (the only one installed); monochrome additionally selects the
+        `slate` libadwaita accent (least saturated enum value).
       '';
     };
 
@@ -63,8 +66,10 @@ in
   config = lib.mkIf cfg.enable {
     gtk = {
       enable = true;
+      # Adwaita is the only GTK theme installed; the accent palette drives
+      # Noctalia/Kitty/Neovim, not the GTK theme name.
       theme = {
-        name = if theme.accent == "adwaita" then "Adwaita" else theme.accent;
+        name = "Adwaita";
         package = pkgs.gnome-themes-extra;
       };
       iconTheme = {
@@ -98,11 +103,15 @@ in
 
     dconf.settings."org/gnome/desktop/interface" = {
       color-scheme = if theme.mode == "dark" then "prefer-dark" else "prefer-light";
-      gtk-theme = if theme.accent == "adwaita" then "Adwaita" else theme.accent;
+      gtk-theme = "Adwaita";
       icon-theme = "Adwaita";
       cursor-theme = theme.cursor.name;
       cursor-size = theme.cursor.size;
       font-name = "${theme.font.name} ${toString theme.font.size}";
+    }
+    // lib.optionalAttrs (theme.accent == "monochrome") {
+      # Nearest monochrome named accent (the key is an enum, not a color).
+      accent-color = "slate";
     };
   };
 }

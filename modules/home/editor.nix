@@ -1,105 +1,92 @@
-# modules/home/editor.nix — Neovim file editor configuration with sensible defaults.
-{ config, lib, pkgs, ... }:
+# modules/home/editor.nix — Neovim via nixvim (fully declarative).
+#
+# Always-on (editor choice is profile-level). All plugins come from nixpkgs —
+# no runtime plugin managers, no downloads. EDITOR/VISUAL are set by nixvim's
+# `defaultEditor` (single source of truth, AGENTS.md rule 8).
+#
+# The colorscheme follows `aspects.theme.accent` (declared by theme.nix):
+# monochrome → mini-base16 grayscale, catppuccin-mocha → catppuccin,
+# anything else → tokyonight.
+{ config, lib, nixvim, ... }:
 let
-  cfg = config.aspects.home.editor;
-  themeAccent = config.aspects.theme.accent or "adwaita";
-  defaultColorscheme = if themeAccent == "catppuccin-mocha" then "catppuccin" else "tokyonight";
+  accent = config.aspects.theme.accent or "adwaita";
+  useMonochrome = accent == "monochrome";
+  useCatppuccin = accent == "catppuccin-mocha";
 in
 {
-  options.aspects.home.editor = {
-    default = lib.mkOption {
-      type = lib.types.enum [ "neovim" "vscode" "emacs" ];
-      default = "neovim";
-    };
+  imports = [ nixvim.homeManagerModules.nixvim ];
 
-    neovim = {
-      enableLSP = lib.mkOption { type = lib.types.bool; default = true; };
-      colorscheme = lib.mkOption { type = lib.types.str; default = defaultColorscheme; };
-      leader = lib.mkOption { type = lib.types.str; default = " "; };
-    };
-  };
-
-  # Provide a minimal init.lua + rc.lua to bootstrap lazy.nvim and a small plugin set.
-  config = lib.mkIf (cfg.default == "neovim") {
-    programs.neovim = {
+  config = {
+    programs.nixvim = {
       enable = true;
       defaultEditor = true;
       viAlias = true;
       vimAlias = true;
 
-      extraPackages = with pkgs; [ nixd nixfmt-rfc-style ];
+      globals.mapleader = " ";
 
-      # Keep the built-in extraConfig minimal; place the main config under xdg.configFile.
-      extraConfig = ''
-See xdg.configFile for the full init.lua bootstrap
-'';
+      opts = {
+        termguicolors = true;
+        number = true;
+        relativenumber = true;
+        expandtab = true;
+        shiftwidth = 2;
+        tabstop = 2;
+        updatetime = 300;
+        completeopt = "menu,menuone,noselect";
+      };
+
+      clipboard.register = "unnamedplus";
+
+      colorschemes = {
+        catppuccin = {
+          enable = useCatppuccin;
+          settings.flavour = "mocha";
+        };
+        tokyonight.enable = !useMonochrome && !useCatppuccin;
+        # Grayscale palette: base00 is true black to match the shell theme.
+        mini-base16 = {
+          enable = useMonochrome;
+          settings.palette = {
+            base00 = "#000000";
+            base01 = "#141414";
+            base02 = "#262626";
+            base03 = "#3d3d3d";
+            base04 = "#8c8c8c";
+            base05 = "#b3b3b3";
+            base06 = "#d6d6d6";
+            base07 = "#f5f5f5";
+            base08 = "#e6e6e6";
+            base09 = "#c4c4c4";
+            base0A = "#bdbdbd";
+            base0B = "#adadad";
+            base0C = "#a3a3a3";
+            base0D = "#999999";
+            base0E = "#8c8c8c";
+            base0F = "#7a7a7a";
+          };
+        };
+      };
+
+      plugins = {
+        lsp = {
+          enable = true;
+          servers.nixd.enable = true;
+        };
+        treesitter.enable = true;
+        telescope.enable = true;
+        cmp.enable = true;
+        which-key.enable = true;
+        gitsigns.enable = true;
+        web-devicons.enable = true;
+      };
+
+      keymaps = [
+        { key = "<leader>ff"; action = "<cmd>Telescope find_files<cr>"; }
+        { key = "<leader>fg"; action = "<cmd>Telescope live_grep<cr>"; }
+        { key = "<leader>fb"; action = "<cmd>Telescope buffers<cr>"; }
+        { key = "<leader>fs"; action = "<cmd>Telescope lsp_document_symbols<cr>"; }
+      ];
     };
-
-    xdg.configFile."nvim/init.lua".text = ''
--- Minimal bootstrap for lazy.nvim and site config
-local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
-if not vim.loop.fs_stat(lazypath) then
-  vim.fn.system({"git", "clone", "--filter=blob:none", "https://github.com/folke/lazy.nvim", lazypath})
-end
-vim.opt.rtp:prepend(lazypath)
-require('rc')
-'';
-
-    xdg.configFile."nvim/lua/rc.lua".text = ''
--- Minimal site rc.lua
-local M = {}
--- basic options
-vim.o.termguicolors = true
-vim.o.number = true
-vim.o.relativenumber = true
-vim.o.expandtab = true
-vim.o.shiftwidth = 2
-vim.o.tabstop = 2
-vim.o.updatetime = 300
-vim.o.completeopt = "menu,menuone,noselect"
-vim.o.clipboard = "unnamedplus"
-
--- leader
-vim.g.mapleader = " "
-local map = vim.keymap.set
-
--- lazy.nvim plugins
-require('lazy').setup({
-  { 'neovim/nvim-lspconfig' },
-  { 'williamboman/mason.nvim', build = function() require('mason').setup() end },
-  { 'williamboman/mason-lspconfig.nvim' },
-  { 'jose-elias-alvarez/null-ls.nvim' },
-  { 'hrsh7th/nvim-cmp' },
-  { 'nvim-treesitter/nvim-treesitter', run = ':TSUpdate' },
-  { 'nvim-telescope/telescope.nvim' },
-  { 'folke/which-key.nvim' },
-  { 'lewis6991/gitsigns.nvim' },
-})
-
--- mason ensure installed (best-effort)
-pcall(function()
-  local ok, mason = pcall(require, 'mason')
-  if ok and mason then
-    require('mason').setup()
-    pcall(function()
-      require('mason-lspconfig').setup({ ensure_installed = { 'lua-language-server', 'pyright', 'rust-analyzer', 'bash-language-server', 'marksman', 'json-lsp' } })
-    end)
-  end
-end)
-
--- keymaps
-map('n', '<leader>ff', '<cmd>Telescope find_files<cr>')
-map('n', '<leader>fg', '<cmd>Telescope live_grep<cr>')
-map('n', '<leader>fb', '<cmd>Telescope buffers<cr>')
-map('n', '<leader>fs', '<cmd>Telescope lsp_document_symbols<cr>')
-map('n', '<leader>r', vim.lsp.buf.rename)
-map('n', '<leader>f', function() vim.lsp.buf.format { async = true } end)
-
--- colorscheme selection (from aspects.theme.accent)
-local cs = "${toString cfg.neovim.colorscheme}"
-pcall(function() vim.cmd('colorscheme ' .. cs) end)
-
-return M
-'';
   };
 }

@@ -52,20 +52,18 @@ in
       })
       cfg.presets);
 
-    # EasyEffects as a D-Bus activated service, tied to the graphical session
+    # EasyEffects as a GApplication service, tied to the graphical session.
+    # Plain `simple` type: D-Bus activation races with Type=dbus caused
+    # restart loops; the app registers its bus name itself.
     systemd.user.services.easyeffects = {
       Unit = {
         Description = "EasyEffects — PipeWire audio DSP";
         After = [ "pipewire.service" ];
-        Requires = [ "pipewire.service" ];
         PartOf = [ "graphical-session.target" ];
       };
       Service = {
-        Type = "dbus";
-        BusName = "com.github.wwmm.easyeffects";
+        Type = "simple";
         ExecStart = "${pkgs.easyeffects}/bin/easyeffects --gapplication-service";
-        Restart = "on-failure";
-        RestartSec = 5;
       };
       Install.WantedBy = [ "graphical-session.target" ];
     };
@@ -74,11 +72,10 @@ in
     systemd.user.services = lib.listToAttrs (map
       (p: {
         name = "easyeffects-load-${p.name}";
-        value = lib.mkIf p.loadOnStart {
+        value = {
           Unit = {
             Description = "Load EasyEffects preset '${p.name}'";
             After = [ "easyeffects.service" ];
-            Requires = [ "easyeffects.service" ];
             PartOf = [ "graphical-session.target" ];
           };
           Service = {

@@ -3,7 +3,11 @@
 {
   config = lib.mkIf config.aspects.core.enable {
     boot.loader = {
-      systemd-boot.enable = true;
+      systemd-boot = {
+        enable = true;
+        # Bound /boot usage — the EFI partition is shared with Windows.
+        configurationLimit = 5;
+      };
       efi.canTouchEfiVariables = true;
     };
 
