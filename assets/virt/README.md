@@ -9,6 +9,25 @@ Target: Ubuntu 22.04/24.04 LTS work VMs on the ThinkBook (Ryzen 7 7735HS,
 Radeon 680M iGPU, 16 GB), with the host's `/home/sid` mounted inside the
 guest at the same path.
 
+## Quick spin of the NixOS ISO
+
+`assets/virt/run-nixos-iso.sh` boots an ISO in a throwaway KVM guest —
+no libvirt involved:
+
+```bash
+./assets/virt/run-nixos-iso.sh ./nixos.iso
+```
+
+- Defaults: 4 vCPUs (host model), 4 GiB RAM, 32 GiB scratch disk
+  (`nixos-vm.qcow2`, auto-created and reused; delete it for a fresh
+  start). Override with `CPUS=8 MEM=8G DISK_SIZE=64G`.
+- Networking is QEMU user-mode: outbound works (git clone / `nix flake`
+  fetch inside the guest), inbound does not.
+- Boots UEFI via the OVMF firmware our libvirtd links into
+  `/run/libvirt/nix-ovmf/`, falling back to SeaBIOS elsewhere.
+- To boot from the installed disk afterwards, drop the `-cdrom` line in
+  the script (or change `-boot order=d` to `order=c`).
+
 ## What the aspect gives you
 
 | Piece | Detail |
