@@ -3,10 +3,23 @@
 # Generic Kitty configuration. Colors are derived from the central
 # aspects.theme option tree (single source of truth — see theme.nix).
 # Gated by aspects.home.terminal.enable.
-{ config, lib, pkgs, ... }:
+{ config, lib, ... }:
 let
   cfg = config.aspects.home.terminal;
   theme = config.aspects.theme;
+  palette =
+    if theme.mode == "dark" then
+      {
+        foreground = "#dedede";
+        background = "#1e1e1e";
+        cursor = "#8ab4f8";
+      }
+    else
+      {
+        foreground = "#303030";
+        background = "#fafafa";
+        cursor = "#1a73e8";
+      };
 in
 {
   options.aspects.home.terminal = {
@@ -17,8 +30,8 @@ in
     programs.kitty = {
       enable = true;
       settings = {
-        font_family = "JetBrains Mono";
-        font_size = "11.0";
+        font_family = theme.font.name;
+        font_size = toString theme.font.size;
         bold_font = "auto";
         italic_font = "auto";
         bold_italic_font = "auto";
@@ -27,14 +40,12 @@ in
         confirm_os_window_close = 0;
         enable_audio_bell = false;
 
-        # Accent: catppuccin-mocha when selected, else Adwaita-neutral.
-        # (Kept inline for now; a richer palette lib can replace this.)
-        foreground = if theme.accent == "catppuccin-mocha" then "#cdd6f4" else "#cdd6f4";
-        background = if theme.accent == "catppuccin-mocha" then "#1e1e2e" else "#1e1e2e";
-        selection_foreground = "#1e1e2e";
-        selection_background = "#f5e0dc";
-        cursor = "#f5e0dc";
-        cursor_text_color = "#1e1e2e";
+        foreground = palette.foreground;
+        background = palette.background;
+        selection_foreground = palette.background;
+        selection_background = palette.cursor;
+        cursor = palette.cursor;
+        cursor_text_color = palette.background;
       };
     };
   };

@@ -11,8 +11,7 @@
 # meaningful for exotic container/VM hosts — it should normally stay on.
 { lib, ... }:
 {
-  options.aspects.core.enable = lib.mkOption {
-    type = lib.types.bool;
+  options.aspects.core.enable = lib.mkEnableOption "core system fundamentals" // {
     default = true;
     description = "Enable core system fundamentals (nix, boot, locale, packages, secrets).";
   };

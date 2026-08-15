@@ -1,5 +1,5 @@
 # modules/home/niri.nix — Niri compositor user configuration with aspect knobs.
-{ config, lib, pkgs, ... }:
+{ config, lib, ... }:
 let
   cfg = config.aspects.home.niri;
 in
@@ -51,7 +51,9 @@ binds {
     Mod+Shift+Y { spawn "sh" "-c" "grim -g \"$(slurp)\" - | wl-copy"; }
 }
 
-${lib.optionalString cfg.showIndicators 'window-indicators { style "dot"; }'}
+${lib.optionalString cfg.showIndicators ''
+window-indicators { style "dot"; }
+''}
 '';
   };
 }

@@ -7,6 +7,11 @@
 let
   cfg = config.aspects.home.theme;
   theme = config.aspects.theme;
+  gtkTheme =
+    if theme.accent == "adwaita" then
+      if theme.mode == "dark" then "Adwaita-dark" else "Adwaita"
+    else
+      theme.accent;
 in
 {
   options.aspects.home.theme = {
@@ -45,13 +50,9 @@ in
     };
 
     accent = lib.mkOption {
-      type = lib.types.str;
+      type = lib.types.enum [ "adwaita" ];
       default = "adwaita";
-      description = ''
-        Accent palette name. Currently selects GTK theme name only
-        (adwaita | catppuccin-mocha | ...); toolkit-specific palettes are
-        a future extension.
-      '';
+      description = "GTK theme family used by the desktop profile.";
     };
 
     mode = lib.mkOption {
@@ -64,7 +65,7 @@ in
     gtk = {
       enable = true;
       theme = {
-        name = if theme.accent == "adwaita" then "Adwaita" else theme.accent;
+        name = gtkTheme;
         package = pkgs.gnome-themes-extra;
       };
       iconTheme = {
@@ -98,7 +99,7 @@ in
 
     dconf.settings."org/gnome/desktop/interface" = {
       color-scheme = if theme.mode == "dark" then "prefer-dark" else "prefer-light";
-      gtk-theme = if theme.accent == "adwaita" then "Adwaita" else theme.accent;
+      gtk-theme = gtkTheme;
       icon-theme = "Adwaita";
       cursor-theme = theme.cursor.name;
       cursor-size = theme.cursor.size;

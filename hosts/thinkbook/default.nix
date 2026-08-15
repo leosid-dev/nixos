@@ -47,10 +47,15 @@ lib.mkHost {
         power.enable = true;
         gaming.enable = true;
         fonts.enable = true;
-        ssh.enable = true;
+        # Enable after adding the operator key below.
+        ssh.enable = false;
         secrets.enable = true;
 
-        users.sid.enable = true;
+        users.sid = {
+          enable = true;
+          # Add the operator's public key before enabling SSH on a deployed host.
+          authorizedKeys = [ ];
+        };
 
         hardware = {
           amdRembrandt = {

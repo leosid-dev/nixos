@@ -10,5 +10,6 @@
     ./niri.nix
     ./portals.nix
     ./login.nix
+    ./bluetooth.nix
   ];
 }

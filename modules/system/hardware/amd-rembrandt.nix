@@ -11,7 +11,7 @@ in
     enable = lib.mkEnableOption "AMD Rembrandt SoC support";
 
     audioPowerSave = lib.mkOption {
-      type = lib.types.int;
+      type = lib.types.ints.between 0 60;
       default = 0;
       description = ''
         HDA codec runtime power-save timeout (seconds). 0 disables it.
@@ -39,7 +39,6 @@ in
     boot.kernelModules = [
       "amd_energy"   # Energy counters monitoring per-core/package power
       "k10temp"      # CPU temperature monitoring driver
-      "ideapad_laptop" # Lenovo WMI/ACPI hotkeys, Fn+Q thermal & platform profile
       "amdgpu"
     ];
 
@@ -68,7 +67,7 @@ in
     hardware.enableRedistributableFirmware = true;
 
     # HDA codec power management (0 = disabled to avoid wake pops)
-    boot.extraModprobeConfig = lib.mkIf (cfg.audioPowerSave != 0) ''
+    boot.extraModprobeConfig = ''
       options snd_hda_intel power_save=${toString cfg.audioPowerSave} power_save_controller=Y
     '';
   };

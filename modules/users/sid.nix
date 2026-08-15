@@ -10,6 +10,12 @@ in
 {
   options.aspects.users.sid = {
     enable = lib.mkEnableOption "system user sid";
+
+    authorizedKeys = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      description = "SSH public keys allowed to log in as sid.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -22,10 +28,10 @@ in
         "video"
         "audio"
         "input"
-        "storage"
       ] ++ lib.optionals config.aspects.gaming.enable [ "gamemode" ];
       shell = pkgs.zsh;
       linger = true; # Allow user services to start at boot
+      openssh.authorizedKeys.keys = cfg.authorizedKeys;
 
       # Password comes from sops (aspects.secrets). Without it the account
       # would be locked: mutableUsers is false, so it cannot be set later.
@@ -43,5 +49,15 @@ in
 
     # Zsh must be enabled at system level for PAM / login shell integration
     programs.zsh.enable = true;
+
+    assertions = [
+      {
+        assertion = config.aspects.secrets.enable;
+        message = "aspects.users.sid.enable requires aspects.secrets.enable for the managed password.";
+      }
+    ] ++ lib.optional config.aspects.ssh.enable {
+      assertion = cfg.authorizedKeys != [ ];
+      message = "SSH requires at least one authorized key for sid.";
+    };
   };
 }

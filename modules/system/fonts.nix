@@ -1,7 +1,7 @@
-# modules/system/fonts.nix — System font packages and fontconfig defaults.
+# modules/system/fonts.nix — System font packages.
 { lib, config, pkgs, ... }:
 {
-  options.aspects.fonts.enable = lib.mkEnableOption "system fonts and fontconfig defaults";
+  options.aspects.fonts.enable = lib.mkEnableOption "system font packages";
 
   config = lib.mkIf config.aspects.fonts.enable {
     fonts.packages = with pkgs; [
@@ -13,10 +13,5 @@
       nerd-fonts.fira-code
     ];
 
-    fonts.fontconfig.defaultFonts = {
-      sansSerif = [ "Inter" "Noto Sans" ];
-      monospace = [ "JetBrains Mono" "FiraCode Nerd Font" ];
-      emoji = [ "Noto Color Emoji" ];
-    };
   };
 }

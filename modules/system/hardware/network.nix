@@ -14,10 +14,10 @@ in
     wifi = {
       aspmFix = lib.mkOption {
         type = lib.types.bool;
-        default = true;
+        default = false;
         description = ''
-          Disable PCIe ASPM on the MT7921e controller. Prevents DMA timeouts
-          and random disconnects (widely reported for this adapter).
+          Disable PCIe ASPM on an MT7921e controller. Enable this only for
+          adapters affected by DMA timeouts or random disconnects.
         '';
       };
 
@@ -36,6 +36,7 @@ in
     # ── WiFi + Ethernet ─────────────────────────────────────────────
     networking.networkmanager.enable = true;
     networking.networkmanager.wifi.powersave = cfg.wifi.powersave;
+    hardware.enableRedistributableFirmware = true;
 
     # Firewall: enabled with sane defaults (allow outbound, deny inbound)
     networking.firewall.enable = true;
@@ -55,8 +56,5 @@ in
         };
       };
     };
-
-    # Blueman for GUI bluetooth management
-    services.blueman.enable = true;
   };
 }

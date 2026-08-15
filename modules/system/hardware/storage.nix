@@ -8,7 +8,6 @@
     services.fstrim.enable = true;
 
     boot.kernelModules = [ "nvme" ];
-    boot.initrd.availableKernelModules = [ "nvme" ];
 
     # Removable media (USB drives, etc.)
     services.udisks2.enable = true;

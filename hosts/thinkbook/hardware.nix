@@ -36,6 +36,7 @@
 
   boot.kernelModules = [
     "kvm-amd" # KVM virtualisation
+    "ideapad_laptop" # Lenovo WMI/ACPI hotkeys and platform profile
   ];
 
   # ── Filesystems ─────────────────────────────────────────────────

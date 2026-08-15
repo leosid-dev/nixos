@@ -1,6 +1,6 @@
 # STATE.md — Architecture, Design Principles & Current State
 
-> Last updated: 2026-08-09 · 41 nix files · 1468 lines · post-refactor
+> Last updated: 2026-08-15 · 40 nix files · declarative refactor pass
 
 ---
 
@@ -21,7 +21,8 @@ System, hardware, user, and home modules are organised as **aspects** — self-c
 | `aspects.hardware.{amdRembrandt,network,storage,usb}` | Hardware aspects | Per-device drivers, kernel modules, quirks |
 | `aspects.users.*` | User identity | OS-level user account declaration |
 | `aspects.home.*` | Home-Manager toggles | Per-persona HM opt-ins (audio, theme, …) |
-| `aspects.{locale,theme}` | Cross-cutting | Shared values (keymap, font, cursor, accent) |
+| `aspects.locale` | System cross-cutting | Keymap shared by console and greeter |
+| `aspects.theme` | Home Manager cross-cutting | Font, cursor, mode, and accent values |
 
 > Every aspect except Core is **off by default** and enabled per host (or per
 > profile) through the `aspects.*` option tree. The naming convention is
@@ -98,7 +99,7 @@ nixos/
 │   │   ├── gaming.nix                     # Steam, GameMode, Wine, MangoHud, Bottles
 │   │   ├── sound.nix                      # PipeWire + ALSA + PulseAudio compat + rtkit
 │   │   ├── power.nix                      # power-profiles-daemon + upower
-│   │   └── fonts.nix                      # System fonts + fontconfig defaults
+│   │   └── fonts.nix                      # System font packages
 │   │   ├── core/                          # Always-on fundamentals (aspects.core.enable)
 │   │   │   ├── default.nix                # Index
 │   │   │   ├── boot.nix                   # systemd-boot, kernel, tmpfs, zram
@@ -108,9 +109,10 @@ nixos/
 │   │   │   └── secrets.nix                # sops-nix (aspects.secrets.enable)
 │   │   ├── desktop/                       # Wayland desktop (aspects.desktop.enable)
 │   │   │   ├── default.nix                # Index
-│   │   │   ├── niri.nix                   # Niri compositor + uniform Wayland sessionVariables
+│   │   │   ├── niri.nix                   # Niri compositor + toolkit defaults
 │   │   │   ├── portals.nix                # XDG desktop portals (GTK fallback)
-│   │   │   └── login.nix                  # noctalia-greeter (reads aspects.locale.keyMap)
+│   │   │   ├── login.nix                  # noctalia-greeter (reads aspects.locale.keyMap)
+│   │   │   └── bluetooth.nix              # Desktop Bluetooth controls
 │   │   └── hardware/                      # Device-specific driver aspects
 │   │       ├── amd-rembrandt.nix          # AMD Ryzen 7 7735HS + Radeon 680M
 │   │       ├── network.nix                # WiFi (MT7921e + aspmFix knob), BT, firewall
@@ -119,9 +121,9 @@ nixos/
 │   │
 │   └── home/                              # Home Manager modules
 │       ├── shell.nix                      # Zsh + fzf + eza + bat (always-on)
-│       ├── editor.nix                     # Neovim + Nix LSPs (always-on, sets EDITOR/VISUAL)
+│       ├── editor.nix                     # Declarative Neovim plugins + Nix LSP (always-on)
 │       ├── git.nix                        # Git + Delta + lazygit (always-on)
-│       ├── niri.nix                       # Niri user config.kdl (always-on with desktop)
+│       ├── niri.nix                       # Niri user config.kdl (enabled by desktop profile)
 │       ├── wayland.nix                    # grim/slurp/wl-clipboard/xwayland-satellite/qt-wayland
 │       ├── terminal.nix                   # Kitty (aspects.home.terminal.enable)
 │       ├── theme.nix                      # GTK/QT/cursor/dconf (aspects.home.theme.enable; aspects.theme)
@@ -149,7 +151,7 @@ nixos/
 | RAM | 16 GB DDR5 |
 | Storage | `nvme0n1` Micron (root `e83c1c8c-…`, swap `4ac49bbd-…`, /boot `E06F-F08E` on `nvme1n1` SYSTEM_DRV) |
 | WiFi | MediaTek MT7921e (`14c3:0616`, `disable_aspm`) |
-| Bluetooth | Foxconn MediaTek (btusb) |
+| Bluetooth | Foxconn MediaTek (btusb), Blueman in desktop aspect |
 | Audio | Realtek ALC257 (HDA) — no smart amps; DSP via EasyEffects profile preset |
 | USB4 | Rembrandt USB4 router present → bolt enabled |
 
@@ -164,7 +166,8 @@ nixos/
 | Gaming Stack | Steam + GameMode + Wine + MangoHud + Bottles | stable |
 | Audio | PipeWire + EasyEffects DSP | stable |
 | Shell | Zsh (with autosuggestions & syntax highlighting) | stable |
-| Theme | Adwaita dark (GTK + QT + dconf) | stable |
+| Remote access | OpenSSH key-only | disabled until an authorized key is supplied |
+| Theme | Adwaita dark (GTK + QT + dconf, HM-owned values) | stable |
 | Fonts | Inter, JetBrains Mono, FiraCode Nerd Font | stable |
 
 ---
@@ -186,12 +189,17 @@ nixos/
 
 1. **First switch (one-time, on the ThinkBook):**
    - `ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub`
-   - edit `secrets/.sops.yaml`: uncomment the `creation_rules` for `secrets\.yaml$`,
-     paste the age pubkey
+   - add the derived age recipient to an active `creation_rules` entry in
+     `secrets/.sops.yaml`
    - `sops secrets/secrets.yaml` → set `users/sid/password` to
      `mkpasswd -m yescrypt` hash
-   - `nix flake lock` (regenerates `flake.lock` now that it's no longer ignored)
+   - `nix flake lock` (generates the required committed `flake.lock`)
 2. **Static gate:** `nix eval .#nixosConfigurations.thinkbook.config.system.build.toplevel.drvPath`
 3. **Full build:** `nixos-rebuild build --flake .#thinkbook` (then `switch`)
 4. **Audio preset:** EasyEffects autoloads `dolby-approximation` on session start
    (oneshot unit installed by the desktop profile).
+
+The current review host does not have Nix installed, so lock-file generation,
+flake evaluation, and builds remain deployment-side steps. The repository still
+contains the bootstrap SOPS placeholder and cannot be switched until it is
+replaced with an encrypted store and a real age recipient.

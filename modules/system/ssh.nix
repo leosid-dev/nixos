@@ -14,6 +14,7 @@
         KbdInteractiveAuthentication = false;
         PermitRootLogin = "no";
       };
+      openFirewall = true;
     };
   };
 }

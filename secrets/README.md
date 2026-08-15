@@ -1,32 +1,34 @@
 # Secrets (sops-nix) — repository playbook
 
-This repository uses `sops` + `sops-nix` for secrets. The default backend is
-`age-ssh` (SSH-agent backed age encryption). This file documents the common
-workflows.
+This repository uses `sops` + `sops-nix` for secrets. The only supported
+backend is age decryption through the host SSH key. The configured secret
+store is `secrets/secrets.yaml`.
 
 Basic workflow
 
-1. Add a recipient (public SSH key):
+1. Derive the host recipient from the target machine's SSH host key:
 
-   - Add the admin's SSH public key to `secrets/recipients.json` (push a PR).
+       ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub
 
-2. Encrypt a secret (`sops` with age-ssh):
+2. Put that recipient in the active `creation_rules` entry in
+   `secrets/.sops.yaml`.
 
-   - Locally, ensure your SSH agent has the private key loaded (e.g. `ssh-add`).
-   - Create plaintext `secrets/users/sid/password` and run:
+3. Edit the configured store with:
 
-       sops --encrypt --age <AGE-RECIPIENT> secrets/users/sid/password > secrets/users/sid/password.sops
+       sops secrets/secrets.yaml
 
-   - Commit the `.sops` file only. Do not commit plaintext.
+   Set `users/sid/password` to the output of `mkpasswd -m yescrypt`.
 
-3. Test rebuild locally:
+4. Commit the encrypted `secrets/secrets.yaml` only. Never commit plaintext.
+
+5. Test rebuild locally:
 
    - Make sure your SSH agent is available and run:
 
        nixos-rebuild switch --flake .#thinkbook
 
-   - This will evaluate `sops-nix` and should populate the Nix store with
-     the decrypted secret path referenced by modules (see `modules/users/sid.nix`).
+   - This will evaluate `sops-nix` and populate the runtime secret path
+     referenced by `modules/users/sid.nix`.
 
 CI considerations
 
@@ -37,16 +39,15 @@ CI considerations
 
 Key rotation & recovery
 
-- To rotate a key: add the new public key to `secrets/recipients.json`, re-encrypt
-  secrets so both keys can decrypt, verify access, then remove the old key and
-  re-encrypt again.
+- To rotate a key: add the new age recipient to `secrets/.sops.yaml`, re-encrypt
+  the store so both keys can decrypt, verify access, then remove the old
+  recipient and re-encrypt again.
 - Keep a recovery private key offline in a secure location (hardware token or
   an encrypted drive in a safe). Test recovery regularly.
 
 Security notes
 
-- Decryption occurs at build/evaluation time and secrets end up in the Nix
-  store. Treat build artifacts and Nix store paths as sensitive.
+- sops-nix decrypts secrets during activation into runtime paths. Treat the
+  encrypted repository and any activation/build logs as sensitive.
 - Prefer hardware-backed SSH keys (YubiKey) and SSH agents to avoid storing
   private key files on disk.
-

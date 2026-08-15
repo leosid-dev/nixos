@@ -23,20 +23,15 @@ Example: change Noctalia prompt and disable media widget
     status.media = false;
   };
 
-Example: change greeter avatar and timeout
-
-  aspects.greeter = {
-    enable = true; # hosts opt in
-    themeSync = true; # sync palette from aspects.theme.accent
-    avatarPath = "/var/lib/greeter/custom-avatar.png";
-    timeout = 90; # seconds
-  };
+Greeter settings are system-owned by the desktop aspect. Its keyboard layout
+follows `aspects.locale.keyMap`; theme values are not read across the
+NixOS/Home Manager module boundary.
 
 Neovim: quick override (set colorscheme or leader)
 
   aspects.home.editor = {
     default = "neovim";
-    neovim.colorscheme = "catppuccin"; # or leave unset to derive from aspects.theme.accent
+    neovim.colorscheme = "catppuccin";
     neovim.leader = ",";
   };
 
@@ -48,7 +43,8 @@ What the config files provide
 
 - Noctalia: `programs.noctalia.settings` receives `theme.mode`, `theme.accent` (from `aspects.theme.accent`), `prompt.style`, and `status.*` booleans.
 
-- Greeter: `modules/system/greeter.nix` toggles `programs.noctalia-greeter` and wires `palette.accent`, `avatar`, and `timeout` from `aspects.greeter`.
+- Greeter: `modules/system/desktop/login.nix` enables `programs.noctalia-greeter`
+  with the shared `aspects.locale.keyMap` keyboard layout.
 
 - Neovim: `xdg.configFile."nvim/init.lua"` and `xdg.configFile."nvim/lua/rc.lua"` are installed by Home Manager when `aspects.home.editor` chooses `neovim`.
   - Bootstraps `folke/lazy.nvim` on first start
@@ -65,7 +61,8 @@ Verification (static/eval/build)
   - `nix build .#nixosConfigurations.thinkbook.config.system.build.toplevel`
 
 Manual functional checks (VM or test host)
-- Greeter: boot the machine, confirm greeter palette matches `aspects.theme.accent`, avatar shows, timeout triggers.
+- Greeter: boot the machine and confirm the Noctalia greeter starts with the
+  configured keyboard layout.
 - Niri: login, verify layout: `gaps` and `centerFocused` behavior; test hotkeys (kitty spawn, workspace focus, window move); screenshot hotkey copies image to clipboard.
 - Noctalia: check status modules (clock/battery/network/media/workspaceIndicator) match `aspects.home.noctalia.status` booleans; check prompt style.
 - Neovim: open a project (Rust/Python), allow Mason to install an LSP (e.g., `pyright`), confirm LSP diagnostics and keymaps work.
@@ -82,7 +79,9 @@ Troubleshooting
 
 Notes and limitations
 - The Neovim `rc.lua` is intentionally minimal — it's meant to be a workable, opinionated starting point. Treat it as a scaffold to extend.
-- The Noctalia and Greeter wiring assume the upstream Home Manager modules expose compatible option names. If your flake's module versions differ, adjust names in `modules/home/noctalia.nix` and `modules/system/greeter.nix` accordingly.
+- The Noctalia and Greeter wiring assume the upstream modules expose compatible
+  option names. If the pinned inputs differ, adjust `modules/home/noctalia.nix`
+  and `modules/system/desktop/login.nix` together.
 - This repo's `flake.nix` pins may require `nix` >= 2.4 with flakes enabled or `nix` from the flakes-ready environment. See your distro's docs.
 
 Where to override (summary)
@@ -92,4 +91,3 @@ Where to override (summary)
 If you'd like I can also:
 - Add a short `assets/ricing/CONFIG_EXAMPLES.md` with more copy/paste snippets for common customizations.
 - Produce a unified `git` patch of my changes so you can apply/commit locally.
-

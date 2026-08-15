@@ -5,7 +5,9 @@
 { lib, nixpkgsLib }:
 let
   entries = builtins.readDir ./.;
-  hostNames = nixpkgsLib.filter (name: entries.${name} == "directory") (
+  hostNames = nixpkgsLib.filter (
+    name: entries.${name} == "directory" && builtins.pathExists (./. + "/${name}/default.nix")
+  ) (
     nixpkgsLib.attrNames entries
   );
 in

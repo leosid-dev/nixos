@@ -10,7 +10,7 @@
 
       # Noctalia binary cache (additive — official cache.nixos.org stays default)
       extra-substituters = [ "https://noctalia.cachix.org" ];
-      trusted-public-keys = [
+      extra-trusted-public-keys = [
         "noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4="
       ];
     };
