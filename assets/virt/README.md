@@ -12,19 +12,26 @@ guest at the same path.
 ## Quick spin of the NixOS ISO
 
 `assets/virt/run-nixos-iso.sh` boots an ISO in a throwaway KVM guest —
-no libvirt involved:
+no libvirt involved. Works on any KVM host (Ubuntu 22.04, NixOS, ...);
+it probes the QEMU binary for slirp/display support and fails with
+actionable hints instead of cryptic errors.
 
 ```bash
 ./assets/virt/run-nixos-iso.sh ./nixos.iso
 ```
 
+- Host prerequisites (Ubuntu 22.04):
+  `sudo apt install qemu-system-x86 qemu-utils ovmf` and KVM access
+  (`sudo usermod -aG kvm $USER`, then re-login). The distro QEMU build
+  includes slirp, so user-mode networking works out of the box.
 - Defaults: 4 vCPUs (host model), 4 GiB RAM, 32 GiB scratch disk
   (`nixos-vm.qcow2`, auto-created and reused; delete it for a fresh
-  start). Override with `CPUS=8 MEM=8G DISK_SIZE=64G`.
+  start). Override with `CPUS=8 MEM=8G DISK_SIZE=64G`, or `QEMU=` to
+  point at a specific `qemu-system-x86_64` binary.
 - Networking is QEMU user-mode: outbound works (git clone / `nix flake`
   fetch inside the guest), inbound does not.
-- Boots UEFI via the OVMF firmware our libvirtd links into
-  `/run/libvirt/nix-ovmf/`, falling back to SeaBIOS elsewhere.
+- Boots UEFI via OVMF when present (`/usr/share/OVMF/` on Ubuntu,
+  `/run/libvirt/nix-ovmf/` on NixOS), falling back to SeaBIOS.
 - To boot from the installed disk afterwards, drop the `-cdrom` line in
   the script (or change `-boot order=d` to `order=c`).
 
