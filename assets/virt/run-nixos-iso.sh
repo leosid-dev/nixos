@@ -38,10 +38,13 @@ command -v qemu-img >/dev/null || {
 
 cpus="${CPUS:-4}"
 mem="${MEM:-4G}"
-disk="${DISK:-nixos-vm.qcow2}"
+disk="${DISK:-./nixvm/nixos-vm.qcow2}"
 
 # Scratch disk, same optimised layout as virt-disk (falloc + 64k clusters).
-[ -f "$disk" ] || qemu-img create -f qcow2 -o preallocation=falloc,cluster_size=64k "$disk" "${DISK_SIZE:-32G}"
+if [ ! -f "$disk" ]; then
+  mkdir -p "$(dirname "$disk")"
+  qemu-img create -f qcow2 -o preallocation=falloc,cluster_size=64k "$disk" "${DISK_SIZE:-32G}"
+fi
 
 # UEFI where OVMF is available; SeaBIOS fallback — the ISO boots either way.
 firmware=()

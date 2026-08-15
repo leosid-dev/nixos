@@ -25,9 +25,9 @@ actionable hints instead of cryptic errors.
   (`sudo usermod -aG kvm $USER`, then re-login). The distro QEMU build
   includes slirp, so user-mode networking works out of the box.
 - Defaults: 4 vCPUs (host model), 4 GiB RAM, 32 GiB scratch disk
-  (`nixos-vm.qcow2`, auto-created and reused; delete it for a fresh
-  start). Override with `CPUS=8 MEM=8G DISK_SIZE=64G`, or `QEMU=` to
-  point at a specific `qemu-system-x86_64` binary.
+  (`./nixvm/nixos-vm.qcow2`, auto-created and reused; delete it for a
+  fresh start). Override with `CPUS=8 MEM=8G DISK_SIZE=64G`, or `QEMU=`
+  to point at a specific `qemu-system-x86_64` binary.
 - Networking is QEMU user-mode: outbound works (git clone / `nix flake`
   fetch inside the guest), inbound does not.
 - Boots UEFI via OVMF when present (`/usr/share/OVMF/` on Ubuntu,
