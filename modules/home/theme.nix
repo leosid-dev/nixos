@@ -7,11 +7,6 @@
 let
   cfg = config.aspects.home.theme;
   theme = config.aspects.theme;
-  gtkTheme =
-    if theme.accent == "adwaita" then
-      if theme.mode == "dark" then "Adwaita-dark" else "Adwaita"
-    else
-      theme.accent;
 in
 {
   options.aspects.home.theme = {
