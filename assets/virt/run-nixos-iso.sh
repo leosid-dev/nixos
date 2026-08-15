@@ -28,13 +28,22 @@ command -v qemu-img >/dev/null || {
   exit 1
 }
 
-# User-mode networking needs slirp compiled in; some builds omit it.
-"$qemu" -netdev help 2>&1 | grep -qw user || {
-  echo "error: this qemu lacks user-mode networking (-netdev user)." >&2
-  echo "Ubuntu: sudo apt install qemu-system-x86 (the distro build includes slirp)." >&2
-  echo "Or point QEMU= at a full build (e.g. nixpkgs qemu_full)." >&2
+# Outbound-only user networking. Prefer slirp (-netdev user); fall back to
+# passt, which ships with newer QEMU builds that omit slirp.
+netdev=()
+if "$qemu" -netdev help 2>&1 | grep -qw user; then
+  netdev=(-netdev user,id=net0)
+elif "$qemu" -netdev help 2>&1 | grep -qw passt; then
+  command -v passt >/dev/null || {
+    echo "error: qemu supports passt but the 'passt' binary is not on PATH." >&2
+    exit 1
+  }
+  netdev=(-netdev passt,id=net0)
+else
+  echo "error: this qemu has neither 'user' nor 'passt' networking compiled in." >&2
+  echo "Ubuntu: sudo apt install qemu-system-x86 (distro build includes slirp)." >&2
   exit 1
-}
+fi
 
 cpus="${CPUS:-4}"
 mem="${MEM:-4G}"
@@ -71,5 +80,5 @@ exec "$qemu" \
   -drive file="$disk",if=virtio,format=qcow2,cache=none,discard=unmap \
   -cdrom "$iso" \
   -boot order=d \
-  -netdev user,id=net0 -device virtio-net-pci,netdev=net0 \
+  "${netdev[@]}" -device virtio-net-pci,netdev=net0 \
   "${display[@]}"

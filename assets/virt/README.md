@@ -28,8 +28,10 @@ actionable hints instead of cryptic errors.
   (`./nixvm/nixos-vm.qcow2`, auto-created and reused; delete it for a
   fresh start). Override with `CPUS=8 MEM=8G DISK_SIZE=64G`, or `QEMU=`
   to point at a specific `qemu-system-x86_64` binary.
-- Networking is QEMU user-mode: outbound works (git clone / `nix flake`
-  fetch inside the guest), inbound does not.
+- Networking is outbound-only user-mode: slirp (`-netdev user`) when the
+  QEMU build includes it, else `passt` (ships with newer builds). Either
+  way, outbound works (git clone / `nix flake` fetch inside the guest),
+  inbound does not.
 - Boots UEFI via OVMF when present (`/usr/share/OVMF/` on Ubuntu,
   `/run/libvirt/nix-ovmf/` on NixOS), falling back to SeaBIOS.
 - To boot from the installed disk afterwards, drop the `-cdrom` line in
