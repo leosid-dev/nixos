@@ -1,7 +1,19 @@
 # modules/system/core/boot.nix — Boot loader and kernel configuration.
 { lib, config, pkgs, ... }:
+let
+  cfg = config.aspects.core;
+in
 {
-  config = lib.mkIf config.aspects.core.enable {
+  options.aspects.core = {
+    kernelPackages = lib.mkOption {
+      type = lib.types.raw;
+      default = pkgs.linuxPackages_latest;
+      defaultText = lib.literalExpression "pkgs.linuxPackages_latest";
+      description = "Linux kernel package set used by the host.";
+    };
+  };
+
+  config = lib.mkIf cfg.enable {
     boot.loader = {
       systemd-boot = {
         enable = true;
@@ -15,7 +27,7 @@
     };
 
     boot.kernelParams = [ "quiet" ];
-    boot.kernelPackages = pkgs.linuxPackages_latest;
+    boot.kernelPackages = cfg.kernelPackages;
 
     # Tmpfs for /tmp (faster, auto-cleaned)
     boot.tmp.useTmpfs = true;

@@ -95,9 +95,8 @@ in
     };
 
     # ── Firmware ──────────────────────────────────────────────────
-    # Redistributable firmware only (AMD/amdgpu + mediaTek blobs); avoiding
-    # enableAllFirmware keeps the closure lean and licensing clean.
-    hardware.enableRedistributableFirmware = true;
+    # Note: hardware.enableRedistributableFirmware is declared once in
+    # modules/system/hardware/network.nix (single canonical source).
 
     # HDA codec power management (0 = disabled to avoid wake pops)
     boot.extraModprobeConfig = ''

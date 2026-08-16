@@ -4,22 +4,19 @@
 # - aspects.home.niri.*      : compositor layout/hotkeys/gaps/corners/animations
 # - aspects.home.terminal.*  : Kitty opacity/fontSize/padding/scrollback
 # - aspects.home.noctalia.*  : status modules, prompt style, theme sync
-# - aspects.home.editor      : (nixvim; colorscheme follows aspects.theme.accent)
-# - aspects.home.shell.*     : flake path for the rebuild alias
+# - aspects.theme.*          : accent, mode, font, cursor, palette
 # - aspects.home.agents.*    : which LLM coding agents to install
 # (The system greeter is configured by the desktop aspect, not here.)
 #
 # Composes the home modules needed for a full desktop experience and sets
-# the per-persona aspect toggles. Imported by hosts/*/users.nix for desktop
+# the explicit persona aspect toggles. Imported by hosts/*/users.nix for desktop
 # users.
 #
-# Always-on (no aspect gate):
-#   - shell, editor, git      (utility, no real variation)
-#   - niri, wayland           (compositor + Wayland tooling; no variation in a
-#                              desktop session)
+# Always-on with desktop profile:
+#   - shell, editor, git, niri, wayland
 #
-# Option-gated (toggle per-persona):
-#   - terminal, audio, theme, noctalia, agents
+# Option-gated (explicit persona selection):
+#   - terminal, theme, noctalia, audio, agents
 { config, lib, ... }:
 {
   imports = [
@@ -36,19 +33,31 @@
   ];
 
   aspects.home = {
-    niri.enable = lib.mkDefault true;
-    terminal.enable = lib.mkDefault true;
-    theme.enable = lib.mkDefault true;
-    noctalia.enable = lib.mkDefault true;
-    audio.enable = lib.mkDefault true;
-    agents.enable = lib.mkDefault true;
+    terminal.enable = true;
+    theme.enable = true;
+    noctalia.enable = true;
+    audio = {
+      enable = true;
+      graphViewer.enable = true;
+      presets = [
+        {
+          name = "dolby-approximation";
+          file = ../assets/easyeffects/dolby-approximation.json;
+          loadOnStart = true;
+        }
+      ];
+    };
+    agents = {
+      enable = true;
+      packages = [
+        "opencode"
+        "grok"
+      ];
+    };
   };
 
-  aspects.home.audio.presets = lib.mkDefault [
-    {
-      name = "dolby-approximation";
-      file = ../assets/easyeffects/dolby-approximation.json;
-      loadOnStart = true;
-    }
-  ];
+  aspects.theme = {
+    accent = "monochrome";
+    mode = "dark";
+  };
 }

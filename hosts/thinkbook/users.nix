@@ -10,6 +10,9 @@
     # managed `home-manager` command and activation survive a rebuild.
     programs.home-manager.enable = true;
 
+    # Flake checkout path for the `rebuild` shell alias (host data)
+    aspects.home.shell.flakePath = "/home/sid/nixos";
+
     home = {
       username = "sid";
       homeDirectory = "/home/sid";

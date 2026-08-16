@@ -4,31 +4,36 @@
 # The standalone Wine stack doubles the gaming closure, so it lives behind
 # aspects.gaming.wine.enable (default off). Steam's own Proton covers most
 # titles; enable wine for native-Wine games or Bottles workflows.
+# Inbound firewall openings for Steam Remote Play and dedicated servers are
+# explicit opt-in sub-options (default off).
 # Gated by aspects.gaming.enable.
 { lib, config, pkgs, ... }:
+let
+  cfg = config.aspects.gaming;
+in
 {
   options.aspects.gaming = {
     enable = lib.mkEnableOption "gaming stack (Steam, GameMode)";
 
     wine = {
-      enable = lib.mkOption {
-        type = lib.types.bool;
-        default = false;
-        description = ''
-          Standalone Wine stack outside Steam's Proton: wineWow64,
-          winetricks, Bottles, protonup-qt. Costs roughly 1.5–2 GB of
-          runtime closure — Steam/Proton already covers most games.
-        '';
-      };
+      enable = lib.mkEnableOption "standalone Wine stack (wineWow64, winetricks, Bottles, protonup-qt)";
+    };
+
+    remotePlay = {
+      enable = lib.mkEnableOption "inbound firewall opening for Steam Remote Play";
+    };
+
+    dedicatedServer = {
+      enable = lib.mkEnableOption "inbound firewall opening for Steam Dedicated Server";
     };
   };
 
-  config = lib.mkIf config.aspects.gaming.enable {
+  config = lib.mkIf cfg.enable {
     # ── Steam & Gaming Services ──────────────────────────────────────
     programs.steam = {
       enable = true;
-      remotePlay.openFirewall = true;
-      dedicatedServer.openFirewall = true;
+      remotePlay.openFirewall = cfg.remotePlay.enable;
+      dedicatedServer.openFirewall = cfg.dedicatedServer.enable;
       gamescopeSession.enable = true;
     };
 
@@ -48,7 +53,7 @@
       # Vulkan & Driver utilities
       vulkan-tools
       clinfo
-    ] ++ lib.optionals config.aspects.gaming.wine.enable [
+    ] ++ lib.optionals cfg.wine.enable [
       wineWow64Packages.stable # WOW64 wine (wineWowPackages deprecated in 26.05)
       winetricks
       protonup-qt # Easy Proton-GE manager

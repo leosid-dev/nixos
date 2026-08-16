@@ -38,17 +38,6 @@
     };
   };
 
-  nixConfig = {
-    extra-substituters = [
-      "https://noctalia.cachix.org"
-      "https://cache.numtide.com"
-    ];
-    extra-trusted-public-keys = [
-      "noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4="
-      "niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g="
-    ];
-  };
-
   outputs =
     {
       self,
@@ -80,9 +69,35 @@
         inherit lib;
         nixpkgsLib = nixpkgs.lib;
       };
+
+      supportedSystems = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
     in
     {
       nixosConfigurations = hosts;
+
+      # Flake checks (agnostic static verification)
+      checks = nixpkgs.lib.genAttrs supportedSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          easyeffects-preset = pkgs.runCommand "validate-easyeffects-preset" {
+            nativeBuildInputs = [ pkgs.jq ];
+          } ''
+            ${pkgs.jq}/bin/jq -e '
+              .output as $o |
+              ($o.plugins_order | type == "array" and length > 0) and
+              ($o.blocklist | type == "array") and
+              all($o.plugins_order[]; . as $id | $o | has($id))
+            ' ${./assets/easyeffects/dolby-approximation.json} >/dev/null
+            touch $out
+          '';
+        }
+      );
 
       # Re-export lib for external consumers / debugging
       lib = lib;

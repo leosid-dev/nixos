@@ -15,7 +15,10 @@ let
   mkHost = import ./mkHost.nix {
     inherit nixpkgsLib home-manager noctalia sops-nix noctalia-greeter nixvim llm-agents;
   };
+
+  # ── Pure color palettes table ──────────────────────────────────────────
+  palettes = import ./palettes.nix;
 in
 {
-  inherit nixpkgsLib channels mkHost;
+  inherit nixpkgsLib channels mkHost palettes;
 }

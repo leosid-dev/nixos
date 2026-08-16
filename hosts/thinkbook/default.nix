@@ -44,32 +44,45 @@ lib.mkHost {
       # Aspect selection: hosts declare intent, modules stay dumb.
       aspects = {
         desktop.enable = true;
-        sound.enable = true;
+        sound = {
+          enable = true;
+          jack.enable = true; # Retain JACK audio emulation layer
+        };
         power.enable = true;
-        gaming.enable = true;
+        gaming = {
+          enable = true;
+          remotePlay.enable = true;
+          dedicatedServer.enable = true;
+        };
         fonts.enable = true;
-        # Enable after adding the operator key below.
+        # OpenSSH server: off by default; enable after adding authorized keys below.
         ssh.enable = false;
         secrets.enable = true;
 
-        # KVM/QEMU work VMs (Ubuntu LTS). Guest data is host policy:
-        # share this machine's home into the guest at the same path.
+        # KVM/QEMU work VMs (Ubuntu LTS).
+        # Dedicated host-backed virtiofs home on the vmdata partition:
+        # /var/lib/libvirt/homes/ubuntu -> mounted at /home/sid inside guest.
         virtualisation = {
           enable = true;
           guests.ubuntu = {
-            hostPath = "/home/sid";
+            hostPath = "/var/lib/libvirt/homes/ubuntu";
             target = "/home/sid";
             uid = 1000;
             gid = 1000;
+            hostLink = "/home/sid/VMs/ubuntu";
           };
         };
 
-        users.sid.enable = true;
+        users.sid = {
+          enable = true;
+          authorizedKeys = [ ];
+        };
 
         hardware = {
           amdRembrandt.enable = true;
           network = {
             enable = true;
+            bluetooth.enable = true;
             wifi = {
               aspmFix = true;
               powersave = false;
@@ -78,7 +91,7 @@ lib.mkHost {
           storage.enable = true;
           usb = {
             enable = true;
-            thunderbolt = true; # Rembrandt USB4 router confirmed via lspci
+            thunderbolt.enable = true; # Rembrandt USB4 router confirmed via lspci
           };
         };
       };

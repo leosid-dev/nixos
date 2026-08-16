@@ -44,6 +44,10 @@ in
   options.aspects.home.audio = {
     enable = lib.mkEnableOption "EasyEffects audio DSP with optional presets";
 
+    graphViewer = {
+      enable = lib.mkEnableOption "PipeWire graph inspection tool (crosspipe)";
+    };
+
     presets = lib.mkOption {
       type = lib.types.listOf (lib.types.submodule {
         options = {
@@ -70,8 +74,7 @@ in
   config = lib.mkIf cfg.enable {
     home.packages = [
       pkgs.easyeffects
-      pkgs.crosspipe # PipeWire graph viewer (helvum removed in 26.05)
-    ];
+    ] ++ lib.optional cfg.graphViewer.enable pkgs.crosspipe;
 
     # Deploy each preset under EasyEffects' standard directory layout
     xdg.configFile = lib.listToAttrs (map

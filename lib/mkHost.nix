@@ -8,10 +8,6 @@
 nixpkgsLib.nixosSystem {
   inherit system;
 
-  specialArgs = {
-    inherit noctalia;
-  };
-
   modules =
     [
       # Pin nixpkgs to our channel-constructed package set

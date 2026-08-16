@@ -31,6 +31,7 @@ If they conflict, AGENTS.md wins; STATE.md is updated to match after a refactor.
    share the same shape: `aspects.X = { enable = mkEnableOption ...; ... }`.
    Single-leaf aspects use `mkEnableOption` directly; multi-leaf aspects use
    nested-attrset style with `let cfg = config.aspects.X; in {...}`.
+   Boolean subfeatures use `<feature>.enable` with conservative inert defaults.
 7. **Aspect-oriented, layered.** Modules own *one* concern. Split when a
    module bundles >1 concern (e.g. `desktop.nix` was decomposed into
    `niri.nix` + `terminal.nix` + `wayland.nix`). Layer purity: generic
@@ -40,7 +41,8 @@ If they conflict, AGENTS.md wins; STATE.md is updated to match after a refactor.
    - `TERMINAL`         → `programs.kitty` (HM sets it)
    - keymap             → `aspects.locale.keyMap` (console + greeter share)
    - font family/cursor → `aspects.theme.font` / `aspects.theme.cursor`
-   - accent palette     → `aspects.theme.accent` (Noctalia, Kitty, Neovim,
+   - accent palette     → `aspects.theme.palette` (derived from canonical
+                          `aspects.theme.accent`; Noctalia, Kitty, Neovim,
                           and Niri focus-ring/background all read it)
    - cachix key         → `modules/system/core/nix.nix`
 9. **Compositor + shell.** Niri (unstable) is the Wayland compositor;

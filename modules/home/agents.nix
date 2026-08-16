@@ -17,14 +17,11 @@ in
 
     packages = lib.mkOption {
       type = lib.types.listOf lib.types.str;
-      default = [
-        "opencode"
-        "grok"
-      ];
+      default = [ ];
       description = ''
         Package names from numtide/llm-agents.nix to install. The catalog
         is updated daily upstream; unknown names fail evaluation with a
-        clear error.
+        clear error. Explicitly selected by profile or user.
       '';
     };
   };

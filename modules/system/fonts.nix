@@ -1,4 +1,8 @@
 # modules/system/fonts.nix — System font packages.
+#
+# Provides system fallback, emoji, and pre-login greeter UI font.
+# User-space font packages and monospace preferences are owned by
+# Home Manager's `aspects.theme.font`.
 { lib, config, pkgs, ... }:
 let
   cfg = config.aspects.fonts;
@@ -7,27 +11,29 @@ in
   options.aspects.fonts = {
     enable = lib.mkEnableOption "system font packages";
 
-    cjk = lib.mkOption {
-      type = lib.types.bool;
-      default = false;
-      description = ''
-        Install noto-fonts-cjk-sans (Chinese/Japanese/Korean). Large
-        (~100 MB) — enable only when CJK text must render in the
-        browser/terminal.
-      '';
+    uiFont = {
+      name = lib.mkOption {
+        type = lib.types.str;
+        default = "FiraCode Nerd Font";
+        description = ''
+          System UI font family name. Documented as greeter-only requirement:
+          noctalia-greeter runs pre-login as the `greeter` user before Home
+          Manager fonts exist.
+        '';
+      };
+      package = lib.mkOption {
+        type = lib.types.package;
+        default = pkgs.nerd-fonts.fira-code;
+        description = "Package providing the system UI font.";
+      };
     };
   };
 
   config = lib.mkIf cfg.enable {
-    fonts.packages =
-      with pkgs;
-      [
-        inter
-        noto-fonts
-        noto-fonts-color-emoji
-        jetbrains-mono
-        nerd-fonts.fira-code
-      ]
-      ++ lib.optionals cfg.cjk [ noto-fonts-cjk-sans ];
+    fonts.packages = [
+      pkgs.noto-fonts
+      pkgs.noto-fonts-color-emoji
+      cfg.uiFont.package
+    ];
   };
 }

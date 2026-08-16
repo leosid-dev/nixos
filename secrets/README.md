@@ -4,6 +4,9 @@ This repository uses `sops` + `sops-nix` for secrets. The only supported
 backend is age decryption through the host SSH key. The configured secret
 store is `secrets/secrets.yaml`.
 
+`secrets/secrets.yaml` is currently a bootstrap placeholder. Do not deploy the
+host until it contains the encrypted `users/sid/password` value.
+
 Basic workflow
 
 1. Derive the host recipient from the target machine's SSH host key
@@ -22,11 +25,16 @@ Basic workflow
 
 4. Commit the encrypted `secrets/secrets.yaml` only. Never commit plaintext.
 
-5. Test rebuild locally:
+5. Validate locally:
 
-   - Make sure your SSH agent is available and run:
+   - For the no-build evaluation gate, run:
 
-       nixos-rebuild switch --flake .#thinkbook
+        nix flake check
+        nix eval .#nixosConfigurations.thinkbook.config.system.build.toplevel.drvPath
+
+   - For a real switch, make sure your SSH agent is available and run:
+
+        nixos-rebuild switch --flake .#thinkbook
 
    - This will evaluate `sops-nix` and populate the runtime secret path
      referenced by `modules/users/sid.nix`.

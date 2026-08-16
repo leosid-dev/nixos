@@ -9,12 +9,14 @@
 #   no shadow, no capsules); workspaces + running-app icons (taskbar) left,
 #   clock center, resource stats / battery rate / performance-mode toggle /
 #   system icons right. The app launcher floats at top-center of the screen.
-# - Theme: monochrome custom palette anchored at true black (deep black on
-#   LCD). The palette follows aspects.theme.accent (single source of truth).
+# - Theme: custom monochrome palette (m* Material schema) anchored at true
+#   black (LCD), with full dark and light variants from lib/palettes.nix.
+#   Mode follows aspects.theme.mode directly.
 { config, lib, noctalia, ... }:
 let
   cfg = config.aspects.home.noctalia;
   theme = config.aspects.theme;
+  palettes = import ../../lib/palettes.nix;
 
   # Palette source selection keyed by the global accent.
   noctaliaTheme =
@@ -34,55 +36,32 @@ let
         builtin = "Noctalia";
       };
 
-  # Monochrome palette in the Noctalia custom-palette format (Material
-  # tokens + terminal section per mode). Surfaces are true black.
+  # Extract Noctalia v5 custom palette schema (m* Material roles + terminal)
+  extractNoctalia = p: {
+    inherit (p)
+      mPrimary
+      mOnPrimary
+      mSecondary
+      mOnSecondary
+      mTertiary
+      mOnTertiary
+      mError
+      mOnError
+      mSurface
+      mOnSurface
+      mSurfaceVariant
+      mOnSurfaceVariant
+      mOutline
+      mShadow
+      mHover
+      mOnHover
+      terminal
+      ;
+  };
+
   monochromePalette = {
-    dark = {
-      primary = "#e6e6e6";
-      onPrimary = "#000000";
-      secondary = "#b3b3b3";
-      onSecondary = "#000000";
-      tertiary = "#8c8c8c";
-      onTertiary = "#000000";
-      error = "#e6e6e6";
-      onError = "#000000";
-      surface = "#000000";
-      onSurface = "#e6e6e6";
-      surfaceVariant = "#141414";
-      onSurfaceVariant = "#a3a3a3";
-      outline = "#3d3d3d";
-      shadow = "#000000";
-      hover = "#1f1f1f";
-      onHover = "#e6e6e6";
-      terminal = {
-        foreground = "#e6e6e6";
-        background = "#000000";
-        cursor = "#e6e6e6";
-        cursorText = "#000000";
-        selectionFg = "#000000";
-        selectionBg = "#a3a3a3";
-        normal = {
-          black = "#000000";
-          red = "#8c8c8c";
-          green = "#999999";
-          yellow = "#a3a3a3";
-          blue = "#adadad";
-          magenta = "#b3b3b3";
-          cyan = "#bdbdbd";
-          white = "#e6e6e6";
-        };
-        bright = {
-          black = "#3d3d3d";
-          red = "#999999";
-          green = "#a3a3a3";
-          yellow = "#b3b3b3";
-          blue = "#bdbdbd";
-          magenta = "#c4c4c4";
-          cyan = "#d6d6d6";
-          white = "#f5f5f5";
-        };
-      };
-    };
+    dark = extractNoctalia palettes.monochrome.dark;
+    light = extractNoctalia palettes.monochrome.light;
   };
 in
 {
@@ -90,11 +69,6 @@ in
 
   options.aspects.home.noctalia = {
     enable = lib.mkEnableOption "Noctalia v5 shell";
-
-    theme.mode = lib.mkOption {
-      type = lib.types.enum [ "dark" "light" ];
-      default = "dark";
-    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -124,7 +98,7 @@ in
         };
 
         theme = noctaliaTheme // {
-          mode = cfg.theme.mode;
+          mode = theme.mode;
           pure_black_dark = true; # keep dark surfaces at true black (LCD)
         };
 

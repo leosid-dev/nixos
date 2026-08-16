@@ -1,46 +1,23 @@
 # modules/home/terminal.nix — Kitty terminal emulator (HM-level).
 #
-# Generic Kitty configuration. Colors come from a small palette keyed by
-# aspects.theme.accent (single source of truth — see theme.nix).
+# Generic Kitty configuration. All colors come from the canonical
+# structured palette in aspects.theme.palette (single source of truth).
 # Gated by aspects.home.terminal.enable.
 { config, lib, ... }:
 let
   cfg = config.aspects.home.terminal;
   theme = config.aspects.theme;
-
-  # Palettes keyed by accent; unknown accents fall back to the neutral dark.
-  palettes = {
-    monochrome = {
-      foreground = "#e6e6e6";
-      background = "#000000"; # true black (deep on LCD)
-      cursor = "#e6e6e6";
-      selection = "#a3a3a3";
-    };
-    catppuccin-mocha = {
-      foreground = "#cdd6f4";
-      background = "#1e1e2e";
-      cursor = "#f5e0dc";
-      selection = "#f5e0dc";
-    };
-    adwaita = {
-      foreground = "#f2f2f2";
-      background = "#1e1e1e";
-      cursor = "#ffffff";
-      selection = "#3584e4";
-    };
-  };
-  palette = palettes.${theme.accent} or palettes.adwaita;
+  palette = theme.palette;
 in
 {
   options.aspects.home.terminal = {
     enable = lib.mkEnableOption "Kitty terminal emulator";
     opacity = lib.mkOption {
       type = lib.types.float;
-      default = if theme.accent == "monochrome" then 1.0 else 0.95;
-      defaultText = "1.0 for the monochrome accent, 0.95 otherwise";
+      default = palette.opacity;
+      defaultText = lib.literalExpression "config.aspects.theme.palette.opacity";
       description = ''
-        Kitty background opacity. Monochrome wants opaque true black;
-        other accents float slightly by default.
+        Kitty background opacity. Follows the active theme palette default.
       '';
     };
     fontSize = lib.mkOption {
@@ -81,12 +58,12 @@ in
         confirm_os_window_close = 0;
         enable_audio_bell = false;
 
-        foreground = palette.foreground;
-        background = palette.background;
-        selection_foreground = palette.background;
-        selection_background = palette.selection;
-        cursor = palette.cursor;
-        cursor_text_color = palette.background;
+        foreground = palette.terminal.foreground;
+        background = palette.terminal.background;
+        selection_foreground = palette.terminal.selectionFg;
+        selection_background = palette.terminal.selectionBg;
+        cursor = palette.terminal.cursor;
+        cursor_text_color = palette.terminal.cursorText;
       };
     };
   };

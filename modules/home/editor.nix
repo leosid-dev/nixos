@@ -5,13 +5,15 @@
 # `defaultEditor` (single source of truth, AGENTS.md rule 8).
 #
 # The colorscheme follows `aspects.theme.accent` (declared by theme.nix):
-# monochrome → mini-base16 grayscale, catppuccin-mocha → catppuccin,
-# anything else → tokyonight.
+# monochrome → mini-base16 (derived from canonical palette),
+# catppuccin-mocha → catppuccin, adwaita → tokyonight.
 { config, lib, nixvim, ... }:
 let
-  accent = config.aspects.theme.accent or "adwaita";
+  accent = config.aspects.theme.accent;
   useMonochrome = accent == "monochrome";
   useCatppuccin = accent == "catppuccin-mocha";
+  useTokyonight = accent == "adwaita";
+  palette = config.aspects.theme.palette;
 in
 {
   imports = [ nixvim.homeModules.nixvim ];
@@ -47,28 +49,10 @@ in
           enable = useCatppuccin;
           settings.flavour = "mocha";
         };
-        tokyonight.enable = !useMonochrome && !useCatppuccin;
-        # Grayscale palette: base00 is true black to match the shell theme.
+        tokyonight.enable = useTokyonight;
         mini-base16 = {
           enable = useMonochrome;
-          settings.palette = {
-            base00 = "#000000";
-            base01 = "#141414";
-            base02 = "#262626";
-            base03 = "#3d3d3d";
-            base04 = "#8c8c8c";
-            base05 = "#b3b3b3";
-            base06 = "#d6d6d6";
-            base07 = "#f5f5f5";
-            base08 = "#e6e6e6";
-            base09 = "#c4c4c4";
-            base0A = "#bdbdbd";
-            base0B = "#adadad";
-            base0C = "#a3a3a3";
-            base0D = "#999999";
-            base0E = "#8c8c8c";
-            base0F = "#7a7a7a";
-          };
+          settings.palette = palette.base16;
         };
       };
 

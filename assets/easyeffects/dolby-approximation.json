@@ -1,5 +1,11 @@
 {
   "output": {
+    "blocklist": [],
+    "plugins_order": [
+      "bass_enhancer#0",
+      "equalizer#0",
+      "limiter#0"
+    ],
     "bass_enhancer#0": {
       "bypass": false,
       "input-gain": 0.0,

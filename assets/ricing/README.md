@@ -5,17 +5,19 @@ Overview
   examples for overriding them per-profile or per-host.
 - Canonical accent: `aspects.theme.accent`. Noctalia, Neovim (colorscheme),
   Kitty (palette) and Niri (focus ring + workspace background) all read
-  from this single source.
+  from `aspects.theme.palette`.
+- Default fonts: `FiraCode Nerd Font` is the default for both UI and code,
+  sharing one glyph-complete family across terminal, shell, and editor.
 
 Quick start (what to enable)
-- The desktop persona (`profiles/desktop.nix`) already enables every home
-  aspect via `lib.mkDefault`; override per host in `hosts/<host>/users.nix`
-  or in a new profile.
+- The desktop persona (`profiles/desktop.nix`) explicitly enables home
+  aspects (terminal, theme, noctalia, audio, agents); override per host in
+  `hosts/<host>/users.nix` or in a new profile. Niri is mandatory for the
+  desktop profile.
 
 Example: change Niri gaps, corner radius and animation feel (host-level)
 
   aspects.home.niri = {
-    enable = true;
     gaps = 12;
     cornerRadius = 6;        # window corner radius
     animationDuration = 300; # ms for the shared bezier easing
@@ -26,7 +28,7 @@ Example: tune the Kitty terminal
 
   aspects.home.terminal = {
     enable = true;
-    opacity = 0.9;      # default: 1.0 monochrome, 0.95 otherwise
+    opacity = 0.9;      # default: follows aspects.theme.palette.opacity
     fontSize = 12;      # default: follows aspects.theme.font.size
     padding = 8;        # px on all sides; default 0
     scrollback = 5000;  # lines; default 2000
@@ -36,12 +38,9 @@ Example: rebind the terminal keybind (default follows TERMINAL)
 
   aspects.home.niri.terminalCommand = "foot"; # null omits Mod+Return
 
-Example: change the Noctalia theme mode
+Example: change the theme mode (dark / light)
 
-  aspects.home.noctalia = {
-    enable = true;
-    theme.mode = "light";
-  };
+  aspects.theme.mode = "light";
 
 Example: switch the accent palette (drives Kitty + Neovim + Noctalia)
 
@@ -54,7 +53,7 @@ Example: pick different LLM coding agents (or drop one)
 LLM agents
 - `modules/home/agents.nix` installs agents from the
   `numtide/llm-agents.nix` flake input (own unstable pin, substituted from
-  cache.numtide.com). Default: `opencode` + `grok`.
+  cache.numtide.com). Default in desktop profile: `opencode` + `grok`.
 - Selection is persona data: override `aspects.home.agents.packages` with
   any names from the upstream catalog (updated daily); unknown names fail
   evaluation with a clear error. Auth is imperative (`opencode auth
@@ -71,8 +70,8 @@ Neovim
   (nixd), treesitter, telescope, cmp, which-key, gitsigns. No runtime
   plugin manager, no downloads.
 - Colorscheme follows `aspects.theme.accent`: `monochrome` → mini-base16
-  grayscale, `catppuccin-mocha` → catppuccin (mocha), anything else →
-  tokyonight.
+  grayscale (derived from `aspects.theme.palette.base16`),
+  `catppuccin-mocha` → catppuccin (mocha), `adwaita` → tokyonight.
 - Key mappings: `<leader>ff` find files, `<leader>fg` live grep,
   `<leader>fb` buffers, `<leader>fs` document symbols.
 
@@ -81,23 +80,22 @@ What the config files provide
   `aspects.home.niri` (gaps, corner radius, one shared cubic-bezier easing
   with a slight overshoot before settling, center-focused-column, hotkeys)
   plus a focus ring and workspace background keyed by
-  `aspects.theme.accent` (monochrome = grayscale ring on true black).
+  `aspects.theme.palette.focus`.
   The Mod+Return spawn command comes from
   `aspects.home.niri.terminalCommand`, which defaults to the canonical
   `TERMINAL` session variable set by the terminal aspect.
-- Noctalia: `programs.noctalia.settings` receives the theme mode, the
-  palette source (from `aspects.theme.accent`), and the bar layout —
-  macOS-style straight rectangle: workspaces + running-app icons (taskbar)
-  left, clock center, resource stats / battery rate / performance-mode
-  toggle / system icons right. The app launcher floats at top-center of
-  the screen. A monochrome custom palette (true-black surfaces) ships
-  with the module.
-- Kitty: palette keyed by `aspects.theme.accent` in
-  `modules/home/terminal.nix` (monochrome = true black, opaque);
-  opacity/fontSize/padding/scrollback are sub-options under
-  `aspects.home.terminal`. The module also sets the canonical `TERMINAL`
-  session variable.
-- GTK/dconf: Adwaita theme always; monochrome accent also sets a gray
+- Noctalia: `programs.noctalia.settings` receives the theme mode (from
+  `aspects.theme.mode`), the palette source (from `aspects.theme.accent`),
+  and the bar layout — macOS-style straight rectangle: workspaces +
+  running-app icons (taskbar) left, clock center, resource stats / battery
+  rate / performance-mode toggle / system icons right. The app launcher
+  floats at top-center of the screen. A custom monochrome palette (m*
+  Material schema) with dark and light variants ships with the module.
+- Kitty: palette derived from `aspects.theme.palette.terminal` in
+  `modules/home/terminal.nix`; opacity/fontSize/padding/scrollback are
+  sub-options under `aspects.home.terminal`. The module also sets the
+  canonical `TERMINAL` session variable.
+- GTK/dconf: Adwaita theme always; monochrome accent also sets a slate
   libadwaita accent color.
 
 Verification (on a machine with Nix)
@@ -118,6 +116,6 @@ Manual functional checks (on the target host)
   keymaps work.
 
 Where to override (summary)
-- Profile-level: `profiles/desktop.nix` — persona-wide defaults.
+- Profile-level: `profiles/desktop.nix` — persona-wide selections.
 - Host-level: `hosts/<hostname>/users.nix` or the host's `default.nix` —
   machine-specific overrides (e.g. `aspects.home.shell.flakePath`).

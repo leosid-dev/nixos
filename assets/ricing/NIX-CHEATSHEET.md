@@ -17,7 +17,7 @@ A compact, goal-scoped reference for common Nix commands used with this reposito
 - Build a flake output (derivation/artifact):
   - `nix build .#<attribute>`
   - Goal: produce activation packages or toplevels.
-  - Example: `nix build .#homeConfigurations.sid.activationPackage`
+   - Example: `nix build .#nixosConfigurations.thinkbook.config.system.build.toplevel`
   - Notes: add `--no-link` to avoid creating `result` symlink.
 
 - Build NixOS system toplevel:
@@ -41,12 +41,10 @@ A compact, goal-scoped reference for common Nix commands used with this reposito
   - `nix flake check`
 
 ## Home Manager (flakes)
-- Build HM activation package:
-  - `nix build .#homeConfigurations.<user>.activationPackage`
-  - Example: `nix build .#homeConfigurations.sid.activationPackage`
-
-- Apply Home Manager config (flake):
-  - `home-manager switch --flake .#<user>`
+- Home Manager is embedded in the NixOS flake and selected by
+  `hosts/*/users.nix`; there is no standalone `homeConfigurations` output.
+- Validate the HM profile through the system derivation:
+  - `nix eval .#nixosConfigurations.<host>.config.system.build.toplevel.drvPath`
 
 ## NixOS system actions
 - Rebuild & switch the system (mutating, requires root):
@@ -91,9 +89,6 @@ A compact, goal-scoped reference for common Nix commands used with this reposito
   - `nix eval .#lib`
   - `nix eval .#nixosConfigurations.<host>.config`
 
-- Build HM activation to validate user config:
-  - `nix build .#homeConfigurations.<user>.activationPackage`
-
 - Test system build before deploy:
   - `nix build .#nixosConfigurations.<host>.config.system.build.toplevel`
 
@@ -107,4 +102,4 @@ A compact, goal-scoped reference for common Nix commands used with this reposito
 
 ---
 
-Want this added to `assets/ricing/README.md` or saved as-is at `assets/ricing/NIX-CHEATSHEET.md`? (Already saved to `assets/ricing/NIX-CHEATSHEET.md`.)
+The desktop profile is applied as part of the NixOS system activation.

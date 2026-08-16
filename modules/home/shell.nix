@@ -6,12 +6,11 @@ in
 {
   options.aspects.home.shell = {
     flakePath = lib.mkOption {
-      type = lib.types.str;
-      default = "~/nixos";
+      type = lib.types.nullOr lib.types.str;
+      default = null;
       description = ''
         Path to this flake checkout on the machine, used by the `rebuild`
-        shell alias. Host data — override per machine if the checkout
-        lives elsewhere.
+        shell alias. Host data — declare per user in `hosts/<host>/users.nix`.
       '';
     };
   };
@@ -38,6 +37,7 @@ in
         cat = "bat";
         g = "git";
         untrack = "git clean -fdX";
+      } // lib.optionalAttrs (cfg.flakePath != null) {
         rebuild = "sudo nixos-rebuild switch --flake ${cfg.flakePath}#$(uname -n)";
       };
     };

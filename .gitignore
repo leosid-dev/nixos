@@ -5,5 +5,4 @@ __pycache__/
 *.pyc
 .idea/
 .vscode/
-session-nemo.md
-REFACTOR.md
+/nixpkgs/

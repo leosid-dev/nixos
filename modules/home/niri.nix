@@ -1,38 +1,12 @@
 # modules/home/niri.nix — Niri compositor user configuration with aspect knobs.
 #
-# Visual design: radius-4 window corners, one shared bezier easing with a
-# slight overshoot before settling (ease-out-back shape), and a focus
-# ring / workspace background keyed by aspects.theme.accent so the
-# compositor matches the shell and terminal (single source of truth).
-#
-# X11 compatibility: niri (>= 25.08) owns xwayland-satellite integration and
-# auto-spawns the satellite when an X11 client connects; the package just has
-# to be on PATH (provided by modules/home/wayland.nix). No spawn-at-startup.
+# Mandatory for the desktop profile. Tuning knobs (gaps, corner radius,
+# animations, focus centering, terminal command) remain configurable.
+# Colors are derived directly from aspects.theme.palette.focus.
 { config, lib, ... }:
 let
   cfg = config.aspects.home.niri;
-  theme = config.aspects.theme;
-
-  # Focus-ring + background palettes keyed by accent; unknown accents fall
-  # back to the neutral dark set.
-  rings = {
-    monochrome = {
-      active = "#e6e6e6";
-      inactive = "#3d3d3d";
-      background = "#000000"; # true black (deep on LCD)
-    };
-    catppuccin-mocha = {
-      active = "#89b4fa";
-      inactive = "#45475a";
-      background = "#1e1e2e";
-    };
-    adwaita = {
-      active = "#78aeed";
-      inactive = "#4d4d4d";
-      background = "#1e1e1e";
-    };
-  };
-  ring = rings.${theme.accent} or rings.adwaita;
+  palette = config.aspects.theme.palette;
 
   # One easing shared by every animation: cubic-bezier with y1 > 1 gives a
   # slight overshoot before settling at 1.0 (ease-out-back shape).
@@ -41,10 +15,10 @@ let
 in
 {
   options.aspects.home.niri = {
-    enable = lib.mkEnableOption "Niri compositor tweaks";
     gaps = lib.mkOption {
       type = lib.types.int;
       default = 8;
+      description = "Gaps in pixels between windows and screen edges.";
     };
     cornerRadius = lib.mkOption {
       type = lib.types.int;
@@ -68,6 +42,7 @@ in
     centerFocused = lib.mkOption {
       type = lib.types.enum [ "never" "always" "on-overflow" ];
       default = "always";
+      description = "Focus centering behavior for columns.";
     };
     terminalCommand = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
@@ -82,18 +57,18 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable {
+  config = {
     xdg.configFile."niri/config.kdl".text = ''
 prefer-no-csd
 
 layout {
     gaps ${toString cfg.gaps}
     center-focused-column "${cfg.centerFocused}"
-    background-color "${ring.background}"
+    background-color "${palette.focus.background}"
 
     focus-ring {
-        active-color "${ring.active}"
-        inactive-color "${ring.inactive}"
+        active-color "${palette.focus.active}"
+        inactive-color "${palette.focus.inactive}"
     }
 }
 

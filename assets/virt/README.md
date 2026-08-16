@@ -1,13 +1,14 @@
 # Virtualisation runbook — KVM/QEMU + virtiofs home sharing
 
 Operator notes for the `aspects.virtualisation` aspect
-(`modules/system/virtualisation.nix`). Everything here is imperative by
+(`modules/system/virtualisation/`). Everything here is imperative by
 nature (VMs are libvirt state, not Nix state); the module provides the
-platform, tuned defaults, and helper scripts.
+platform, tuned defaults, and reviewed integration artifacts.
 
 Target: Ubuntu 22.04/24.04 LTS work VMs on the ThinkBook (Ryzen 7 7735HS,
-Radeon 680M iGPU, 16 GB), with the host's `/home/sid` mounted inside the
-guest at the same path.
+Radeon 680M iGPU, 16 GB), with a dedicated host-backed home directory at
+`/var/lib/libvirt/homes/ubuntu` (on the `vmdata` partition) mounted inside
+the guest at `/home/sid`, and linked on the host at `/home/sid/VMs/ubuntu`.
 
 ## Quick spin of the NixOS ISO
 
@@ -25,8 +26,8 @@ actionable hints instead of cryptic errors.
   (`sudo usermod -aG kvm $USER`, then re-login). The distro QEMU build
   includes slirp, so user-mode networking works out of the box.
 - Defaults: 4 vCPUs (host model), 4 GiB RAM, 32 GiB scratch disk
-  (`/media/sid/nixvm/nixos-vm.qcow2`, auto-created and reused; delete it
-  for a fresh start). Override with `CPUS=8 MEM=8G DISK_SIZE=64G`,
+  (`~/.cache/nixos-vm/nixos-vm.qcow2`, auto-created with metadata preallocation;
+  delete it for a fresh start). Override with `CPUS=8 MEM=8G DISK_SIZE=64G`,
   `DISK=/path/to/disk.qcow2`, or `QEMU=` to point at a specific
   `qemu-system-x86_64` binary.
 - Networking is outbound-only user-mode: slirp (`-netdev user`) when the
@@ -44,33 +45,29 @@ actionable hints instead of cryptic errors.
 |---|---|
 | libvirtd | root-mode QEMU, `onShutdown = "shutdown"` (clean ACPI stop of guests) |
 | QEMU | `qemu_kvm` (host-arch only, virgl/Venus 3D built in); OVMF UEFI firmware auto-listed from `/run/libvirt/nix-ovmf/` |
-| virtiofsd | Rust vhost-user backend, auto-discovered via `/var/lib/qemu/vhost-user/50-virtiofsd.json` |
+| virtiofsd | Rust vhost-user backend, auto-discovered via `/var/lib/qemu/vhost-user/` |
 | virt-manager | GUI for VM lifecycle |
-| swtpm | emulated TPM 2.0 for guests |
-| SPICE USB redirection | pass USB devices into VMs (note: grants users arbitrary USB access) |
-| KSM | on — dedups identical host/guest memory pages |
-| Hugepages | off by default (16 GB laptop); per-VM allocation still possible |
-| `virt-disk` | creates optimised guest disks (see below) |
-| `virtfs-setup-<guest>` | guest-side bootstrap per `aspects.virtualisation.guests` entry |
+| swtpm | optional emulated TPM 2.0 (gated via `aspects.virtualisation.swtpm.enable`, default off) |
+| SPICE USB redirection | optional USB passthrough (gated via `aspects.virtualisation.spiceUsbRedirection.enable`, default off) |
+| KSM | optional memory deduplication (gated via `aspects.virtualisation.ksm.enable`, default off on laptops) |
+| `virt-disk` | creates sparse qcow2 or raw guest disks (validates name & size arguments) |
+| `/etc/virtfs/<guest>/` | reviewed XML fragments (`share.xml`, `memory-backing.xml`) & portable guest setup script (`setup-guest.sh`) |
 
-## 1. Create the guest disk (minimal overhead + resizable)
+## 1. Create the guest disk (sparse + resizable)
 
 ```bash
-virt-disk ubuntu 64G          # qcow2, preallocation=falloc, cluster_size=64k
-virt-disk --raw ubuntu 64G    # alternative: raw (zero translation, no snapshots)
+virt-disk ubuntu 64G          # qcow2, preallocation=metadata, cluster_size=64k
+virt-disk --raw ubuntu 64G    # alternative: raw (zero overhead, no snapshots)
 ```
 
-- `preallocation=falloc` reserves space up front → within ~1–3% of raw,
-  while keeping snapshots and on-demand growth.
+- `preallocation=metadata` allocates cluster metadata up front while
+  preserving sparse growth — guest images only consume host disk space as
+  data is written.
 - Resize later (online with virtio-blk):
   `sudo qemu-img resize /var/lib/libvirt/images/ubuntu.qcow2 +16G`,
   then inside the guest: `sudo resize2fs /dev/vda1`.
 - `fstrim -av` inside the guest returns freed space to the host file
   (requires `discard='unmap'` below).
-
-**Advanced:** an LVM logical volume as the guest disk is the true
-zero-overhead option (real block device, `lvextend`-resizable) — at the
-cost of thin provisioning and snapshot ergonomics.
 
 ## 2. Create the VM (virt-manager)
 
@@ -98,22 +95,24 @@ and declare the iothread:
 <iothreads>1</iothreads>
 ```
 
-## 3. Share the host home (virtiofs)
+## 3. Dedicated guest home via virtiofs
 
-Add to the VM's `<devices>` section (the tag `home_share` must match the
-guest mount unit's `What=`):
+The module generates reviewed XML fragments for each guest defined in
+`aspects.virtualisation.guests.<name>` under `/etc/virtfs/<name>/`.
+
+Add the filesystem share into the VM's `<devices>` section (from
+`/etc/virtfs/ubuntu/share.xml`):
 
 ```xml
 <filesystem type="mount" accessmode="passthrough">
-  <driver type="virtiofs"/>
-  <source dir="/home/sid"/>
+  <driver type="virtiofs" queue="1024"/>
+  <source dir="/var/lib/libvirt/homes/ubuntu"/>
   <target dir="home_share"/>
 </filesystem>
 ```
 
-virtiofs requires **shared memory** — QEMU refuses to start the device
-without it. Add this top-level stanza (anywhere directly under
-`<domain>`):
+Add the shared memory backing directly under `<domain>` (from
+`/etc/virtfs/ubuntu/memory-backing.xml`):
 
 ```xml
 <memoryBacking>
@@ -122,25 +121,26 @@ without it. Add this top-level stanza (anywhere directly under
 </memoryBacking>
 ```
 
-virtiofs over 9p: coherent, DAX-capable, supports inotify/file locks —
-dev tools (watchers, LSP, git) behave normally on the share.
+virtiofs provides coherent, inotify-compatible, file-locking shared storage
+backed by the host's `vmdata` partition at `/var/lib/libvirt/homes/ubuntu`.
+
+> **Important:** Libvirt VM snapshots do **NOT** include virtiofs contents.
+> Back up `/var/lib/libvirt/homes/ubuntu` independently from the guest image.
 
 ## 4. Inside the guest (after Ubuntu install)
 
+Run the portable guest setup script generated by NixOS under
+`/etc/virtfs/ubuntu/setup-guest.sh`:
+
 ```bash
-virtfs-setup-ubuntu
+# Pipe from host to guest over SSH:
+cat /etc/virtfs/ubuntu/setup-guest.sh | ssh ubuntu@<vm-ip> 'sudo sh -s'
 ```
 
-The generated script (from `aspects.virtualisation.guests.ubuntu`):
-- installs + enables a systemd mount unit named after the mount point
-  (systemd requires the `.mount` filename to match the escaped
-  `Where=` path: `/home/sid` → `home-sid.mount`) that mounts the share,
-- aligns the guest user's UID/GID to the host (1000:1000) so file
-  ownership is seamless across the share. Log out/in afterwards.
-
-Then move dotfiles onto the share or symlink `~` pieces as preferred.
-Ubuntu's first user is created as UID 1000, so the alignment is usually a
-no-op.
+The script:
+- Installs and enables `/etc/systemd/system/home-sid.mount` mounting `home_share` at `/home/sid`.
+- Aligns the guest user's UID/GID to `1000:1000`.
+- Requires only standard POSIX `/bin/sh` and systemd (no Nix-store dependencies).
 
 ## 5. GPU: virtio-gpu + Venus (not passthrough)
 
@@ -168,18 +168,19 @@ echo 0000:01:00.0 | sudo tee /sys/bus/pci/drivers/vfio-pci/bind
 
 ## 6. Optional tuning for dedicated work sessions
 
-Hugepages (per VM, avoids host-wide reservation):
+Per-session hugepages (avoids permanent host RAM reservation on a 16 GB laptop):
+
+```bash
+# Allocate 4 GB of 2M hugepages dynamically when needed:
+sudo virsh allocpages 2048 2M
+```
+
+and add to the domain XML:
 
 ```xml
 <memoryBacking>
   <hugepages/>
 </memoryBacking>
-```
-
-plus host-side reservation before booting the VM:
-
-```bash
-echo 4096 | sudo tee /proc/sys/vm/nr_hugepages   # 4096 * 2M = 8G
 ```
 
 vCPU pinning (keep cores 0–1 for the host):
@@ -195,6 +196,6 @@ vCPU pinning (keep cores 0–1 for the host):
 
 ## Clean slate
 
-VM disks are fresh images in `/var/lib/libvirt/images/` — no existing
-partitions or OSes are reused. Deleting a VM = delete its image; nothing
-else to clean up.
+VM disks live in `/var/lib/libvirt/images/` and guest homes in
+`/var/lib/libvirt/homes/` — both on the dedicated `vmdata` partition.
+Deleting a VM = delete its image and backing directory.

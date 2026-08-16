@@ -56,10 +56,11 @@
     ];
   };
 
-  # VM images live on their own partition so qcow2 growth never competes
-  # with the root filesystem. libvirt's default pool and the `virt-disk`
-  # helper both write here — no module changes needed.
-  fileSystems."/var/lib/libvirt/images" = {
+  # VM data partition: mounted at /var/lib/libvirt so both guest disk
+  # images (/var/lib/libvirt/images) and virtiofs host-backed guest homes
+  # (/var/lib/libvirt/homes) live on their own partition without competing
+  # with the root filesystem.
+  fileSystems."/var/lib/libvirt" = {
     device = "/dev/disk/by-label/vmdata";
     fsType = "ext4";
     options = [ "noatime" "lazytime" ];

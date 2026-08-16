@@ -97,12 +97,13 @@ mkfs.ext4 -L nixos /dev/nvme0n1p3
 ```
 
 Filesystem choices: FAT32 is mandatory for the ESP (2 GiB is generous —
-systemd-boot with `configurationLimit = 5` fits easily); ext4 for root
-keeps things simple and fsck-friendly (btrfs is the alternative if you
-want snapshots later); 8 GiB swap complements the zram swap enabled by
+systemd-boot with `configurationLimit = 3` fits easily); ext4 for root
+keeps things simple and fsck-friendly (plain ext4 without LUKS is the
+accepted design for this machine; secrets are protected by sops-nix age
+encryption); 8 GiB swap complements the zram swap enabled by
 `modules/system/core/boot.nix` on this 16 GB machine.
 
-### 3c. Disk 2 (`nvme1n1`) — VM images + media/games
+### 3c. Disk 2 (`nvme1n1`) — VM data + media/games
 
 ```bash
 wipefs -a /dev/nvme1n1
@@ -115,19 +116,18 @@ mkfs.ext4 -L media  /dev/nvme1n1p2
 ```
 
 Both are ext4 with `noatime` (declared in `hosts/thinkbook/hardware.nix`).
-exFAT would only make sense for cross-OS sharing, which the wipe removes.
-The VM partition mounts at `/var/lib/libvirt/images` — libvirt's default
-pool and the `virt-disk` helper write there with zero config changes. The
-media partition mounts at `/home/sid/media` (add a Steam library folder
-inside it later).
+The VM partition mounts at `/var/lib/libvirt` — housing both sparse disk
+images (`/var/lib/libvirt/images`) and dedicated virtiofs guest homes
+(`/var/lib/libvirt/homes`). The media partition mounts at `/home/sid/media`
+(add a Steam library folder inside it later).
 
 ### 3d. Mount everything
 
 ```bash
 mount /dev/disk/by-label/nixos /mnt
-mkdir -p /mnt/boot /mnt/var/lib/libvirt/images /mnt/home/sid/media
+mkdir -p /mnt/boot /mnt/var/lib/libvirt /mnt/home/sid/media
 mount /dev/disk/by-label/boot /mnt/boot
-mount /dev/disk/by-label/vmdata /mnt/var/lib/libvirt/images
+mount /dev/disk/by-label/vmdata /mnt/var/lib/libvirt
 mount /dev/disk/by-label/media /mnt/home/sid/media
 swapon /dev/disk/by-label/swap
 ```
@@ -194,9 +194,8 @@ cd /mnt/etc/nixos
 nixos-install --flake .#thinkbook
 ```
 
-The first run fetches all flake inputs and creates `flake.lock` (it is not
-committed yet — that happens in step 9). sops-nix decrypts the store
-during activation using the key from step 4.
+The install uses the committed `flake.lock` (AGENTS.md rule 1). sops-nix
+decrypts the store during activation using the host SSH key from step 4.
 
 When prompted for a root password: **just press Enter to skip it**. Root
 is locked by design (`users.mutableUsers = false`, no declarative root
@@ -247,14 +246,15 @@ but proves the relocated checkout works end to end.
 - **Greeter:** reboot once; login screen uses the `us` keymap and starts
   niri.
 - **Compositor:** `Mod+Return` opens Kitty; window animations overshoot
-  slightly then settle; `Mod+Shift+P` screenshots a region to clipboard.
+  slightly then settle; `Mod+Shift+Y` screenshots a region to clipboard
+  (`Mod+Shift+S` for fullscreen).
 - **Firefox:** launches from the launcher; check `about:support` →
   "Window Protocol" says `wayland` (native, via the system-wide
   `MOZ_ENABLE_WAYLAND=1`).
 - **Network:** `nmcli device` shows WiFi connected; Bluetooth pairs.
 - **Audio:** play something; EasyEffects autoloads the
   `dolby-approximation` preset (oneshot unit from the desktop profile).
-- **Mounts:** `findmnt /var/lib/libvirt/images /home/sid/media` shows the
+- **Mounts:** `findmnt /var/lib/libvirt /home/sid/media` shows the
   two data partitions.
 - **Firmware:** `fwupdmgr refresh && fwupdmgr update` (manual, on demand).
 - **Agents:** `opencode --version && grok --version` (auth is imperative:
@@ -267,8 +267,7 @@ Full checklist: STATE.md → "Verification & Rollout".
 | Symptom | Cause / fix |
 |---|---|
 | Activation fails mentioning sops/secrets | Step 6 not done — the placeholder store is still in place. |
-| `nixos-install` can't find `flake.lock` | Expected on first run; it is generated. Commit it in step 9. |
 | WiFi stalls / DMA timeouts | MT7921e quirk — `aspects.hardware.network.wifi.aspmFix` is already on for this host. |
 | Audio pops on codec wake | ALC257 quirk — `audioPowerSave = 0` is already the default in `amd-rembrandt.nix`. |
 | Screen flicker / external monitor freeze | Set `aspects.hardware.amdRembrandt.flickerFix = true` and rebuild. |
-| `/boot` full on rebuild | `configurationLimit = 5` bounds generations; `nix-collect-garbage -d` if needed. |
+| `/boot` full on rebuild | `configurationLimit = 3` bounds generations; `nix-collect-garbage -d` if needed. |

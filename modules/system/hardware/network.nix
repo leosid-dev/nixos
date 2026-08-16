@@ -11,6 +11,10 @@ in
   options.aspects.hardware.network = {
     enable = lib.mkEnableOption "network hardware (WiFi, ethernet, bluetooth)";
 
+    bluetooth = {
+      enable = lib.mkEnableOption "Bluetooth controller and bluetoothd daemon";
+    };
+
     wifi = {
       aspmFix = lib.mkOption {
         type = lib.types.bool;
@@ -47,7 +51,7 @@ in
     '';
 
     # ── Bluetooth ───────────────────────────────────────────────────
-    hardware.bluetooth = {
+    hardware.bluetooth = lib.mkIf cfg.bluetooth.enable {
       enable = true;
       powerOnBoot = true;
       settings = {
