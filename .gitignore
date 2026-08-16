@@ -1,0 +1,9 @@
+result
+result-*
+.direnv/
+__pycache__/
+*.pyc
+.idea/
+.vscode/
+session-nemo.md
+REFACTOR.md
