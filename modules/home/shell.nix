@@ -38,7 +38,7 @@ in
         cat = "bat";
         g = "git";
         untrack = "git clean -fdX";
-        rebuild = "sudo nixos-rebuild switch --flake ${cfg.flakePath}#$(hostname)";
+        rebuild = "sudo nixos-rebuild switch --flake ${cfg.flakePath}#$(uname -n)";
       };
     };
 

@@ -25,9 +25,10 @@ actionable hints instead of cryptic errors.
   (`sudo usermod -aG kvm $USER`, then re-login). The distro QEMU build
   includes slirp, so user-mode networking works out of the box.
 - Defaults: 4 vCPUs (host model), 4 GiB RAM, 32 GiB scratch disk
-  (`./nixvm/nixos-vm.qcow2`, auto-created and reused; delete it for a
-  fresh start). Override with `CPUS=8 MEM=8G DISK_SIZE=64G`, or `QEMU=`
-  to point at a specific `qemu-system-x86_64` binary.
+  (`/media/sid/nixvm/nixos-vm.qcow2`, auto-created and reused; delete it
+  for a fresh start). Override with `CPUS=8 MEM=8G DISK_SIZE=64G`,
+  `DISK=/path/to/disk.qcow2`, or `QEMU=` to point at a specific
+  `qemu-system-x86_64` binary.
 - Networking is outbound-only user-mode: slirp (`-netdev user`) when the
   QEMU build includes it, else `passt` (ships with newer builds). Either
   way, outbound works (git clone / `nix flake` fetch inside the guest),
@@ -110,6 +111,17 @@ guest mount unit's `What=`):
 </filesystem>
 ```
 
+virtiofs requires **shared memory** — QEMU refuses to start the device
+without it. Add this top-level stanza (anywhere directly under
+`<domain>`):
+
+```xml
+<memoryBacking>
+  <source type="memfd"/>
+  <access mode="shared"/>
+</memoryBacking>
+```
+
 virtiofs over 9p: coherent, DAX-capable, supports inotify/file locks —
 dev tools (watchers, LSP, git) behave normally on the share.
 
@@ -120,8 +132,9 @@ virtfs-setup-ubuntu
 ```
 
 The generated script (from `aspects.virtualisation.guests.ubuntu`):
-- installs + enables a `home-share.mount` systemd unit mounting the share
-  at `/home/sid` (fstab entry included),
+- installs + enables a systemd mount unit named after the mount point
+  (systemd requires the `.mount` filename to match the escaped
+  `Where=` path: `/home/sid` → `home-sid.mount`) that mounts the share,
 - aligns the guest user's UID/GID to the host (1000:1000) so file
   ownership is seamless across the share. Log out/in afterwards.
 

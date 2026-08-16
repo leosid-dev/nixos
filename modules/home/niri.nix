@@ -4,6 +4,10 @@
 # slight overshoot before settling (ease-out-back shape), and a focus
 # ring / workspace background keyed by aspects.theme.accent so the
 # compositor matches the shell and terminal (single source of truth).
+#
+# X11 compatibility: niri (>= 25.08) owns xwayland-satellite integration and
+# auto-spawns the satellite when an X11 client connects; the package just has
+# to be on PATH (provided by modules/home/wayland.nix). No spawn-at-startup.
 { config, lib, ... }:
 let
   cfg = config.aspects.home.niri;
@@ -80,7 +84,7 @@ in
 
   config = lib.mkIf cfg.enable {
     xdg.configFile."niri/config.kdl".text = ''
-prefer-no-csd true
+prefer-no-csd
 
 layout {
     gaps ${toString cfg.gaps}
@@ -129,19 +133,18 @@ binds {
     ${lib.optionalString (cfg.terminalCommand != null)
       ''Mod+Return { spawn "${cfg.terminalCommand}"; }''}
     Mod+q { close-window; }
-    Mod+Shift+P { spawn "sh" "-c" "grim -g \"$(slurp)\" - | wl-copy"; }
     Mod+Shift+Escape { power-off-monitors; }
 
-    # Workspace focus (vim-style) and window movement
-    Mod+h { focus left; }
-    Mod+j { focus down; }
-    Mod+k { focus up; }
-    Mod+l { focus right; }
+    # Focus (vim-style) and window movement
+    Mod+h { focus-column-left; }
+    Mod+j { focus-window-down; }
+    Mod+k { focus-window-up; }
+    Mod+l { focus-column-right; }
 
-    Mod+Shift+h { move left; }
-    Mod+Shift+j { move down; }
-    Mod+Shift+k { move up; }
-    Mod+Shift+l { move right; }
+    Mod+Shift+h { move-column-left; }
+    Mod+Shift+j { move-window-down; }
+    Mod+Shift+k { move-window-up; }
+    Mod+Shift+l { move-column-right; }
 
     # Screenshot + clipboard helpers
     Mod+Shift+S { spawn "sh" "-c" "grim - | wl-copy"; }

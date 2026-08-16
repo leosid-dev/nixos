@@ -69,7 +69,7 @@ in
     programs.kitty = {
       enable = true;
       settings = {
-        font_family = theme.font.name;
+        font_family = theme.font.monospace.name;
         font_size = toString cfg.fontSize;
         bold_font = "auto";
         italic_font = "auto";

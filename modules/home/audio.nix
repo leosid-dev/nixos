@@ -16,9 +16,11 @@ let
 
   loadPresetScript = name:
     pkgs.writeShellScript "easyeffects-load-${name}" ''
-      for _ in $(seq 30); do
+      i=0
+      while [ $i -lt 30 ]; do
         ${pkgs.easyeffects}/bin/easyeffects --load-preset ${lib.escapeShellArg name} && exit 0
         sleep 1
+        i=$((i + 1))
       done
       echo "easyeffects-load: preset '${name}' did not load in time" >&2
       exit 1

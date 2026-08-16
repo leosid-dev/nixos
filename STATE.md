@@ -1,6 +1,7 @@
 # STATE.md — Architecture, Design Principles & Current State
 
-> Last updated: 2026-08-16 · 45 nix files · post-bugfix refactor
+> Last updated: 2026-08-16 · 45 nix files · post-proofread fixes (niri KDL,
+> git/HM 26.05 renames, mount unit naming, monospace font, polkit agent)
 
 ---
 
@@ -174,6 +175,7 @@ nixos/
 | LLM Agents | opencode + grok via numtide/llm-agents.nix | flake input (own unstable pin, numtide cache) |
 | Gaming Stack | Steam + GameMode + Wine + MangoHud + Bottles | stable |
 | Virtualisation | KVM/QEMU (libvirt + virt-manager), virtiofs home sharing, virtio-gpu + Venus | stable |
+| Privilege prompts | Noctalia's native polkit agent (`shell.polkit_agent`) | flake input |
 | Audio | PipeWire + EasyEffects DSP | stable |
 | Shell | Zsh (with autosuggestions & syntax highlighting) | stable |
 | Theme | Monochrome (true-black) via `aspects.theme.accent`; Adwaita GTK/QT + dconf; Niri focus-ring/background follow the accent | stable |

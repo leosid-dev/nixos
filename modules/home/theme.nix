@@ -27,6 +27,20 @@ in
         type = lib.types.int;
         default = 11;
       };
+      monospace = {
+        name = lib.mkOption {
+          type = lib.types.str;
+          default = "JetBrains Mono";
+          description = ''
+            Monospace font family for terminals and code (Kitty, etc.).
+            Kept separate from the UI font, which is proportional.
+          '';
+        };
+        package = lib.mkOption {
+          type = lib.types.package;
+          default = pkgs.jetbrains-mono;
+        };
+      };
     };
 
     cursor = {

@@ -48,7 +48,7 @@ fi
 
 cpus="${CPUS:-4}"
 mem="${MEM:-4G}"
-disk="${DISK:-./nixvm/nixos-vm.qcow2}"
+disk="${DISK:-/media/sid/nixvm/nixos-vm.qcow2}"
 
 # Scratch disk, same optimised layout as virt-disk (falloc + 64k clusters).
 if [ ! -f "$disk" ]; then

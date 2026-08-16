@@ -4,16 +4,6 @@
   programs.git = {
     enable = true;
 
-    # Default aliases
-    aliases = {
-      st = "status";
-      co = "checkout";
-      ci = "commit";
-      br = "branch";
-      df = "diff";
-      lg = "log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit";
-    };
-
     # Global gitignore
     ignores = [
       "*~"
@@ -26,24 +16,35 @@
       ".vscode/"
     ];
 
-    # Extra configuration options
-    extraConfig = {
+    # Settings + aliases (HM >= 26.05: `settings` replaces `extraConfig`
+    # and `aliases`).
+    settings = {
       init.defaultBranch = "main";
       pull.rebase = true;
       push.autoSetupRemote = true;
       core.autocrlf = "input";
       fetch.prune = true;
-    };
 
-    # Enhanced diff viewer
-    delta = {
-      enable = true;
-      options = {
-        navigate = true;
-        light = false;
-        side-by-side = true;
-        line-numbers = true;
+      alias = {
+        st = "status";
+        co = "checkout";
+        ci = "commit";
+        br = "branch";
+        df = "diff";
+        lg = "log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit";
       };
+    };
+  };
+
+  # Enhanced diff viewer (HM >= 26.05: standalone programs.delta).
+  programs.delta = {
+    enable = true;
+    enableGitIntegration = true;
+    options = {
+      navigate = true;
+      light = false;
+      side-by-side = true;
+      line-numbers = true;
     };
   };
 
