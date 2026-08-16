@@ -23,6 +23,9 @@
       percentageAction = 3;
       # Suspend at critical battery. HybridSleep needs hibernation plumbing
       # (boot.resumeDevice + swap >= RAM); revisit as a future aspect.
+      # nixos-26.05 gates Suspend behind allowRiskyCriticalPowerAction
+      # (risky = no hibernate state saved; unsaved work loss possible).
+      allowRiskyCriticalPowerAction = true;
       criticalPowerAction = "Suspend";
     };
   };

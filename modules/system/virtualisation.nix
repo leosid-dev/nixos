@@ -12,11 +12,16 @@ let
   # One-shot bootstrap for a guest: mounts the host's virtiofs share and
   # aligns the guest user's UID/GID with the host so file ownership is
   # seamless across the share. Run inside the guest after install.
+  #
+  # systemd requires the .mount unit filename to match the mount point
+  # (e.g. /home/sid -> home-sid.mount); the guest derives the exact name
+  # with systemd-escape at runtime so any target path works.
   guestScript = name: g: pkgs.writeShellScriptBin "virtfs-setup-${name}" ''
     set -euo pipefail
-    echo "Mounting host share ${g.hostPath} at ${g.target} (tag: home_share)"
+    unit="$(systemd-escape -p --suffix=mount "${g.target}")"
+    echo "Mounting host share ${g.hostPath} at ${g.target} (tag: home_share, unit: $unit)"
     sudo mkdir -p ${g.target}
-    cat <<'UNIT' | sudo tee /etc/systemd/system/home-share.mount >/dev/null
+    cat <<'UNIT' | sudo tee /etc/systemd/system/$unit >/dev/null
     [Unit]
     Description=virtiofs home share (tag home_share)
 
@@ -30,7 +35,7 @@ let
     WantedBy=multi-user.target
     UNIT
     sudo systemctl daemon-reload
-    sudo systemctl enable --now home-share.mount
+    sudo systemctl enable --now "$unit"
     # Align guest user with host UID/GID (no-op if already ${toString g.uid}:${toString g.gid})
     sudo groupmod -g ${toString g.gid} -o "$USER" 2>/dev/null || true
     sudo usermod -u ${toString g.uid} -o "$USER" 2>/dev/null || true

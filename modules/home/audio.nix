@@ -16,9 +16,11 @@ let
 
   loadPresetScript = name:
     pkgs.writeShellScript "easyeffects-load-${name}" ''
-      for _ in $(seq 30); do
+      i=0
+      while [ $i -lt 30 ]; do
         ${pkgs.easyeffects}/bin/easyeffects --load-preset ${lib.escapeShellArg name} && exit 0
         sleep 1
+        i=$((i + 1))
       done
       echo "easyeffects-load: preset '${name}' did not load in time" >&2
       exit 1
@@ -68,7 +70,7 @@ in
   config = lib.mkIf cfg.enable {
     home.packages = [
       pkgs.easyeffects
-      pkgs.helvum
+      pkgs.crosspipe # PipeWire graph viewer (helvum removed in 26.05)
     ];
 
     # Deploy each preset under EasyEffects' standard directory layout
@@ -81,45 +83,26 @@ in
 
     # EasyEffects as a GApplication service, tied to the graphical session.
     # Plain `simple` type: D-Bus activation races with Type=dbus caused
-    # restart loops; the app registers its bus name itself.
-    systemd.user.services.easyeffects = {
-      Unit = {
-        Description = "EasyEffects — PipeWire audio DSP";
-        After = [ "pipewire.service" ];
-        PartOf = [ "graphical-session.target" ];
+    # restart loops; the app registers its bus name itself. One oneshot
+    # loader per loadOnStart preset is merged into the same binding.
+    systemd.user.services = {
+      easyeffects = {
+        Unit = {
+          Description = "EasyEffects — PipeWire audio DSP";
+          After = [ "pipewire.service" ];
+          PartOf = [ "graphical-session.target" ];
+        };
+        Service = {
+          Type = "simple";
+          ExecStart = "${pkgs.easyeffects}/bin/easyeffects --gapplication-service";
+        };
+        Install.WantedBy = [ "graphical-session.target" ];
       };
-      Service = {
-        Type = "simple";
-        ExecStart = "${pkgs.easyeffects}/bin/easyeffects --gapplication-service";
-      };
-      Install.WantedBy = [ "graphical-session.target" ];
-    };
-
-    # One oneshot per preset that wants to auto-load
-    systemd.user.services = lib.listToAttrs (map
+    } // lib.listToAttrs (map
       (p: {
         name = "easyeffects-load-${p.name}";
-        value = {
-          Unit = {
-            Description = "Load EasyEffects preset '${p.name}'";
-            After = [ "easyeffects.service" ];
-            PartOf = [ "graphical-session.target" ];
-          };
-          Service = {
-            Type = "dbus";
-            BusName = "com.github.wwmm.easyeffects";
-            ExecStart = "${pkgs.easyeffects}/bin/easyeffects --gapplication-service";
-            Restart = "on-failure";
-            RestartSec = 5;
-          };
-          Install.WantedBy = [ "graphical-session.target" ];
-        };
-      }
-      // lib.listToAttrs (map
-        (p: {
-          name = "easyeffects-load-${p.name}";
-          value = loaderService p;
-        })
-        autoLoad);
+        value = loaderService p;
+      })
+      autoLoad);
   };
 }

@@ -22,6 +22,20 @@ Example: change Niri gaps, corner radius and animation feel (host-level)
     overshoot = 0.2;         # 0 = no overshoot; higher = more bounce
   };
 
+Example: tune the Kitty terminal
+
+  aspects.home.terminal = {
+    enable = true;
+    opacity = 0.9;      # default: 1.0 monochrome, 0.95 otherwise
+    fontSize = 12;      # default: follows aspects.theme.font.size
+    padding = 8;        # px on all sides; default 0
+    scrollback = 5000;  # lines; default 2000
+  };
+
+Example: rebind the terminal keybind (default follows TERMINAL)
+
+  aspects.home.niri.terminalCommand = "foot"; # null omits Mod+Return
+
 Example: change the Noctalia theme mode
 
   aspects.home.noctalia = {
@@ -68,6 +82,9 @@ What the config files provide
   with a slight overshoot before settling, center-focused-column, hotkeys)
   plus a focus ring and workspace background keyed by
   `aspects.theme.accent` (monochrome = grayscale ring on true black).
+  The Mod+Return spawn command comes from
+  `aspects.home.niri.terminalCommand`, which defaults to the canonical
+  `TERMINAL` session variable set by the terminal aspect.
 - Noctalia: `programs.noctalia.settings` receives the theme mode, the
   palette source (from `aspects.theme.accent`), and the bar layout —
   macOS-style straight rectangle: workspaces + running-app icons (taskbar)
@@ -76,7 +93,10 @@ What the config files provide
   the screen. A monochrome custom palette (true-black surfaces) ships
   with the module.
 - Kitty: palette keyed by `aspects.theme.accent` in
-  `modules/home/terminal.nix` (monochrome = true black, opaque).
+  `modules/home/terminal.nix` (monochrome = true black, opaque);
+  opacity/fontSize/padding/scrollback are sub-options under
+  `aspects.home.terminal`. The module also sets the canonical `TERMINAL`
+  session variable.
 - GTK/dconf: Adwaita theme always; monochrome accent also sets a gray
   libadwaita accent color.
 
@@ -88,8 +108,8 @@ Manual functional checks (on the target host)
 - Greeter: boot, confirm the login screen uses the console keymap and
   starts a niri session.
 - Niri: login, verify gaps/center-focused behavior; window animations
-  should overshoot slightly then settle; test hotkeys (kitty spawn,
-  focus/move, screenshot-to-clipboard).
+  should overshoot slightly then settle; test hotkeys (terminal spawn via
+  Mod+Return, focus/move, screenshot-to-clipboard).
 - Noctalia: check the bar layout (workspaces/app icons left, clock
   center, stats + performance toggle + icons right), the launcher
   opening at top-center, the theme mode, and that the palette matches

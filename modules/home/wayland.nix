@@ -1,7 +1,9 @@
 # modules/home/wayland.nix — Wayland tooling & X11 compatibility (HM-level).
 #
-# Always-on with a desktop profile: provides xwayland-satellite (no built-in
-# XWayland in niri), screenshot tools, clipboard, qt-wayland plugins.
+# Always-on with a desktop profile: provides xwayland-satellite (niri spawns
+# it on demand from PATH — no manual autostart needed), screenshot tools,
+# clipboard, and qt-wayland plugins. Privilege prompts are owned by
+# Noctalia's built-in polkit agent (aspects.home.noctalia).
 { pkgs, ... }:
 {
   home.packages = with pkgs; [

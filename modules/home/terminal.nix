@@ -34,20 +34,50 @@ in
 {
   options.aspects.home.terminal = {
     enable = lib.mkEnableOption "Kitty terminal emulator";
+    opacity = lib.mkOption {
+      type = lib.types.float;
+      default = if theme.accent == "monochrome" then 1.0 else 0.95;
+      defaultText = "1.0 for the monochrome accent, 0.95 otherwise";
+      description = ''
+        Kitty background opacity. Monochrome wants opaque true black;
+        other accents float slightly by default.
+      '';
+    };
+    fontSize = lib.mkOption {
+      type = lib.types.int;
+      default = theme.font.size;
+      defaultText = lib.literalExpression "config.aspects.theme.font.size";
+      description = "Terminal font size; follows the theme font by default.";
+    };
+    padding = lib.mkOption {
+      type = lib.types.int;
+      default = 0;
+      description = "Window padding in pixels, applied to all four sides.";
+    };
+    scrollback = lib.mkOption {
+      type = lib.types.int;
+      default = 2000;
+      description = "Scrollback buffer size in lines.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
+    # Canonical TERMINAL source (AGENTS.md rule 8); niri's terminal keybind
+    # reads this instead of hardcoding a second reference.
+    home.sessionVariables.TERMINAL = "kitty";
+
     programs.kitty = {
       enable = true;
       settings = {
-        font_family = theme.font.name;
-        font_size = toString theme.font.size;
+        font_family = theme.font.monospace.name;
+        font_size = toString cfg.fontSize;
         bold_font = "auto";
         italic_font = "auto";
         bold_italic_font = "auto";
 
-        # Monochrome wants opaque true black; other palettes may float.
-        background_opacity = if theme.accent == "monochrome" then "1.0" else "0.95";
+        background_opacity = toString cfg.opacity;
+        window_padding_width = toString cfg.padding;
+        scrollback_lines = toString cfg.scrollback;
         confirm_os_window_close = 0;
         enable_audio_bell = false;
 

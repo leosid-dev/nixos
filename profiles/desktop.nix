@@ -2,6 +2,7 @@
 #
 # Ricing knobs:
 # - aspects.home.niri.*      : compositor layout/hotkeys/gaps/corners/animations
+# - aspects.home.terminal.*  : Kitty opacity/fontSize/padding/scrollback
 # - aspects.home.noctalia.*  : status modules, prompt style, theme sync
 # - aspects.home.editor      : (nixvim; colorscheme follows aspects.theme.accent)
 # - aspects.home.shell.*     : flake path for the rebuild alias

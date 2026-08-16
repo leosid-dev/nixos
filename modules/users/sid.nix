@@ -28,7 +28,6 @@ in
         "video"
         "audio"
         "input"
-        "storage"
       ] ++ lib.optionals config.aspects.gaming.enable [ "gamemode" ]
         ++ lib.optionals config.aspects.virtualisation.enable [ "libvirtd" ];
       shell = pkgs.zsh;

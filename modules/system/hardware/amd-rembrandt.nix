@@ -30,6 +30,31 @@ in
         DCN 3.1.4 issue on Rembrandt laptops).
       '';
     };
+
+    perfTuning = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Safe performance/power knobs for the SoC:
+        - iommu=pt: passthrough IOMMU mode — no translation overhead for
+          host devices and a prerequisite for VFIO passthrough.
+        - nowatchdog: disable the hardware watchdog timer (one less thing
+          polling; no downside on a laptop).
+        - vm.swappiness=10: zram-friendly — prefer compressed RAM over
+          disk swap until memory pressure is real.
+      '';
+    };
+
+    abmLevel = lib.mkOption {
+      type = lib.types.nullOr (lib.types.ints.between (-1) 1);
+      default = null;
+      description = ''
+        Adaptive Backlight Management level for the eDP panel
+        (amdgpu.abmlevel, -1..1). Experiment: -1 disables ABM, 1 applies
+        it (dimmer backlight saves battery but shifts perceived colors).
+        Default null = driver default, no kernel param added.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -49,14 +74,22 @@ in
         "amd_pstate=active"        # Driver: amd-pstate-epp
         "amdgpu.gpu_recovery=1"    # Enable automatic GPU recovery on hangs
       ]
-      ++ lib.optionals cfg.flickerFix [ "amdgpu.dcdebugmask=0x10" ];
+      ++ lib.optionals cfg.flickerFix [ "amdgpu.dcdebugmask=0x10" ]
+      ++ lib.optionals cfg.perfTuning [
+        "iommu=pt"    # Passthrough IOMMU: no host-device translation; enables VFIO
+        "nowatchdog"  # No hardware-watchdog polling on laptops
+      ]
+      ++ lib.optionals (cfg.abmLevel != null) [ "amdgpu.abmlevel=${toString cfg.abmLevel}" ];
+
+    # zram-friendly swap pressure: prefer compressed RAM over disk swap.
+    boot.kernel.sysctl = lib.mkIf cfg.perfTuning { "vm.swappiness" = 10; };
 
     # ── iGPU & VAAPI Hardware Acceleration ────────────────────────
     hardware.graphics = {
       enable = true;
       enable32Bit = true;
       extraPackages = with pkgs; [
-        vaapiVdpau
+        libva-vdpau-driver # VDPAU→VA-API translation (vaapiVdpau renamed in 26.05)
         libvdpau-va-gl
       ];
     };

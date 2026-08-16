@@ -11,5 +11,6 @@
     ./portals.nix
     ./login.nix
     ./bluetooth.nix
+    ./browser.nix
   ];
 }

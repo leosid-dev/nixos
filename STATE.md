@@ -1,6 +1,8 @@
 # STATE.md — Architecture, Design Principles & Current State
 
-> Last updated: 2026-08-15 · 43 nix files · post-bugfix refactor
+> Last updated: 2026-08-16 · 45 nix files · optimisation pass (closure trim:
+> wine sub-aspect off by default, CJK fonts optional, NixOS manuals dropped;
+> hardware: perfTuning + abmLevel knobs, lazytime mounts; generations capped at 3)
 
 ---
 
@@ -17,7 +19,7 @@ System, hardware, user, and home modules are organised as **aspects** — self-c
 
 | Namespace | Examples | What it owns |
 |---|---|---|
-| `aspects.{core,secrets,desktop,sound,power,fonts,gaming,ssh,virtualisation}` | System aspects | Nix settings, boot, locale, sound stack, gaming, KVM/virtiofs, … |
+| `aspects.{core,secrets,desktop,sound,power,fonts,gaming,ssh,virtualisation}` | System aspects | Nix settings, boot, locale, sound stack, gaming (+wine sub-aspect), KVM/virtiofs, … |
 | `aspects.hardware.{amdRembrandt,network,storage,usb}` | Hardware aspects | Per-device drivers, kernel modules, quirks |
 | `aspects.users.*` | User identity | OS-level user account declaration |
 | `aspects.home.*` | Home-Manager toggles | Per-persona HM opt-ins (audio, theme, …) |
@@ -100,7 +102,7 @@ nixos/
 │   │   ├── virtualisation.nix             # KVM/QEMU + libvirt + virtiofs home sharing (aspects.virtualisation.*)
 │   │   ├── sound.nix                      # PipeWire + ALSA + PulseAudio compat + rtkit
 │   │   ├── power.nix                      # power-profiles-daemon + upower
-│   │   ├── fonts.nix                      # System fonts + fontconfig defaults
+│   │   ├── fonts.nix                      # System font packages (Inter, Noto, JetBrains Mono, FiraCode NF)
 │   │   ├── core/                          # Always-on fundamentals (aspects.core.enable)
 │   │   │   ├── default.nix                # Index
 │   │   │   ├── boot.nix                   # systemd-boot (limit 5), kernel, tmpfs, zram
@@ -112,6 +114,8 @@ nixos/
 │   │   │   ├── default.nix                # Index
 │   │   │   ├── niri.nix                   # Niri compositor + uniform Wayland sessionVariables
 │   │   │   ├── portals.nix                # XDG desktop portals (GTK fallback) + dconf backend
+│   │   │   ├── bluetooth.nix              # Blueman (follows the network aspect's bluetoothd)
+│   │   │   ├── browser.nix                # Firefox (system-level, native Wayland)
 │   │   │   └── login.nix                  # noctalia-greeter (reads aspects.locale.keyMap)
 │   │   └── hardware/                      # Device-specific driver aspects
 │   │       ├── amd-rembrandt.nix          # AMD Ryzen 7 7735HS + Radeon 680M
@@ -123,9 +127,9 @@ nixos/
 │       ├── shell.nix                      # Zsh + fzf + eza + bat (always-on; flakePath option)
 │       ├── editor.nix                     # Neovim via nixvim (always-on, sets EDITOR/VISUAL)
 │       ├── git.nix                        # Git + Delta + lazygit (always-on)
-│       ├── niri.nix                       # Niri user config.kdl: bezier overshoot easing, accent-keyed ring (always-on with desktop)
+│       ├── niri.nix                       # Niri user config.kdl: bezier overshoot easing, accent-keyed ring, terminalCommand knob (always-on with desktop)
 │       ├── wayland.nix                    # grim/slurp/wl-clipboard/xwayland-satellite/qt-wayland
-│       ├── terminal.nix                   # Kitty, accent-keyed palette (aspects.home.terminal.enable)
+│       ├── terminal.nix                   # Kitty, accent-keyed palette, sets TERMINAL; opacity/fontSize/padding/scrollback knobs (aspects.home.terminal.enable)
 │       ├── theme.nix                      # GTK/QT/cursor/dconf (aspects.home.theme.enable; aspects.theme)
 │       ├── noctalia.nix                   # Noctalia v5 shell (aspects.home.noctalia.enable)
 │       ├── audio.nix                      # EasyEffects DSP + presets option (aspects.home.audio.enable)
@@ -154,7 +158,7 @@ nixos/
 | CPU | AMD Ryzen 7 7735HS (Rembrandt, Zen 3+, 8C/16T) |
 | GPU | AMD Radeon 680M (RDNA2 iGPU, integrated) |
 | RAM | 16 GB DDR5 |
-| Storage | `nvme0n1` Micron (root `e83c1c8c-…`, swap `4ac49bbd-…`, /boot `E06F-F08E` on `nvme1n1` SYSTEM_DRV) |
+| Storage | `nvme0n1` Micron: ESP "boot" (2 GiB) + swap (8 GiB) + root "nixos"; `nvme1n1` KIOXIA: "vmdata" (150 GiB → `/var/lib/libvirt/images`) + "media" (rest → `/home/sid/media`). Label-based refs; layout created by WALKTHROUGH.md |
 | WiFi | MediaTek MT7921e (`14c3:0616`, `disable_aspm`) |
 | Bluetooth | Foxconn MediaTek (btusb), Blueman in desktop aspect |
 | Audio | Realtek ALC257 (HDA) — no smart amps; DSP via EasyEffects profile preset |
@@ -167,10 +171,12 @@ nixos/
 | Shell + Login | Noctalia v5 + noctalia-greeter | flake input (cachix) |
 | Secrets | sops-nix (age via SSH host ed25519) | flake input |
 | Terminal | Kitty | stable (auto-sets TERMINAL) |
+| Browser | Firefox (system-level, native Wayland via MOZ_ENABLE_WAYLAND) | stable |
 | File Editor | Neovim via nixvim (nixd LSP, sets EDITOR/VISUAL) | flake input |
 | LLM Agents | opencode + grok via numtide/llm-agents.nix | flake input (own unstable pin, numtide cache) |
 | Gaming Stack | Steam + GameMode + Wine + MangoHud + Bottles | stable |
 | Virtualisation | KVM/QEMU (libvirt + virt-manager), virtiofs home sharing, virtio-gpu + Venus | stable |
+| Privilege prompts | Noctalia's native polkit agent (`shell.polkit_agent`) | flake input |
 | Audio | PipeWire + EasyEffects DSP | stable |
 | Shell | Zsh (with autosuggestions & syntax highlighting) | stable |
 | Theme | Monochrome (true-black) via `aspects.theme.accent`; Adwaita GTK/QT + dconf; Niri focus-ring/background follow the accent | stable |
@@ -194,8 +200,10 @@ nixos/
 
 ## Verification & Rollout
 
+> Full clean-slate install procedure: `WALKTHROUGH.md`.
+
 1. **First switch (one-time, on the ThinkBook):**
-   - `ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub`
+   - `ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub`
    - add the derived age recipient to an active `creation_rules` entry in
      `secrets/.sops.yaml`
    - `sops secrets/secrets.yaml` → set `users/sid/password` to
@@ -219,3 +227,24 @@ nixos/
    true-black background, the flat macOS-style bar (workspaces/app icons
    left, clock center, stats + performance toggle right) and the
    top-center launcher.
+
+---
+
+## Optimisation pass (closure trims + hardware tuning)
+
+| Knob | Where | Default | Effect |
+|---|---|---|---|
+| `aspects.gaming.wine.enable` | gaming.nix | `false` | wineWow64+winetricks+bottles+protonup-qt gated; Steam+GameMode+MangoHud always on |
+| `aspects.fonts.cjk` | fonts.nix | `false` | drops noto-fonts-cjk-sans (~100 MB) unless enabled |
+| `documentation.nixos.enable` | core/default.nix | `false` | drops NixOS HTML/manual generation |
+| `aspects.hardware.amdRembrandt.perfTuning` | amd-rembrandt.nix | `true` | iommu=pt, nowatchdog, vm.swappiness=10 |
+| `aspects.hardware.amdRembrandt.abmLevel` | amd-rembrandt.nix | `null` | Adaptive Backlight Management knob |
+| `lazytime` on ext4 mounts | hosts/thinkbook/hardware.nix | on | journal write reduction |
+| `nix.settings.{auto-optimise-store,max-jobs,cores}` | core/nix.nix | — | store dedup on write + full parallelism |
+| `configurationLimit = 3` | core/boot.nix | 3 | bounds /boot + store-level generation prune |
+
+**Measured:** build closure (toplevel.drvPath recursive path-info) went from
+16,674 paths / ~47.3 GiB → 16,078 paths / ~45.1 GiB (**−596 paths, −2.2 GiB**).
+Verify with `nix path-info -r <drv>` before/after; runtime closure
+(post-install actual disk usage) is smaller than either because unused
+derivations in the build closure never get realised on the root filesystem.

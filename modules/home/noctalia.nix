@@ -110,6 +110,10 @@ in
         shell = {
           # Font follows aspects.theme.font (single source of truth).
           font_family = theme.font.name;
+          # Noctalia's native polkit auth agent owns privilege prompts
+          # (virt-manager, NetworkManager, package managers), theme-matched
+          # and placed per shell.panel.polkit_placement.
+          polkit_agent = true;
           panel = {
             borders = true;
             shadow = false; # flat, macOS-style panels
