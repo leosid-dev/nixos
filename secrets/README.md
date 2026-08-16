@@ -6,9 +6,10 @@ store is `secrets/secrets.yaml`.
 
 Basic workflow
 
-1. Derive the host recipient from the target machine's SSH host key:
+1. Derive the host recipient from the target machine's SSH host key
+   (`-i` converts a *public* key to an age recipient):
 
-       ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub
+       ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub
 
 2. Put that recipient in the active `creation_rules` entry in
    `secrets/.sops.yaml`.

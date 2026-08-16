@@ -65,6 +65,17 @@ in
       type = lib.types.enum [ "never" "always" "on-overflow" ];
       default = "always";
     };
+    terminalCommand = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = config.home.sessionVariables.TERMINAL or null;
+      defaultText = lib.literalExpression "config.home.sessionVariables.TERMINAL or null";
+      description = ''
+        Command spawned by the terminal keybind (Mod+Return). Defaults to
+        the canonical TERMINAL session variable set by the terminal aspect
+        (single source of truth — AGENTS.md rule 8); null (no terminal
+        aspect enabled) omits the keybind.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -115,7 +126,8 @@ window-rule {
 }
 
 binds {
-    Mod+Return { spawn "kitty"; }
+    ${lib.optionalString (cfg.terminalCommand != null)
+      ''Mod+Return { spawn "${cfg.terminalCommand}"; }''}
     Mod+q { close-window; }
     Mod+Shift+P { spawn "sh" "-c" "grim -g \"$(slurp)\" - | wl-copy"; }
     Mod+Shift+Escape { power-off-monitors; }

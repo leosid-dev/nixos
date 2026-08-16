@@ -8,17 +8,14 @@
 #   CPU:  AMD Ryzen 7 7735HS (Rembrandt, Zen 3+)
 #   GPU:  AMD Radeon 680M (RDNA2 iGPU)
 #   RAM:  16 GB DDR5
-#   Storage:
-#     nvme0n1 (Micron) — Linux/NixOS side
-#       p1 = vfat EFI (Ubuntu leftovers)        UUID 1D56-ABDB
-#       p2 = swap                                UUID 4ac49bbd-…
-#       p3 = ext4 Ubuntu /                       UUID 37510d25-…
-#       p4 = ext4 NixOS root (label "nixos")     UUID e83c1c8c-…  ← this system
-#     nvme1n1 (KIOXIA) — Windows side
-#       p1 = SYSTEM_DRV vfat (shared EFI)        UUID E06F-F08E   ← used as /boot
-#       p2 = MSR
-#       p3 = Windows-SSD ntfs                    UUID C66C704F-…
-#       p4 = WINRE_DRV ntfs                      UUID 800A70D2-…
+#   Storage (clean-slate layout, created by WALKTHROUGH.md):
+#     nvme0n1 (Micron) — NixOS system disk
+#       p1 = vfat ESP (label "boot", 2 GiB)      ← /boot
+#       p2 = swap      (label "swap", 8 GiB)
+#       p3 = ext4 root (label "nixos", rest)     ← /
+#     nvme1n1 (KIOXIA) — data disk
+#       p1 = ext4 VM images (label "vmdata", 150 GiB) ← /var/lib/libvirt/images
+#       p2 = ext4 media/games (label "media", rest)   ← /home/sid/media
 #   WiFi: MediaTek MT7921e (14c3:0616)
 #   BT:   Foxconn MediaTek (btusb)
 #   NIC:  none onboard (USB-C/RJ45 dongles only; r8169/asix/cdc_ncm drivers in-kernel)
@@ -40,14 +37,18 @@
   ];
 
   # ── Filesystems ─────────────────────────────────────────────────
+  # PLACEHOLDER: disk layout (clean-slate install). The labels below are
+  # created by the partitioning steps in WALKTHROUGH.md. If you deviate
+  # from that layout, update the labels here (or switch to
+  # /dev/disk/by-uuid/<UUID> once the disks are formatted).
   fileSystems."/" = {
-    device = "/dev/disk/by-uuid/e83c1c8c-ffd3-4750-a9d8-431ec065c6d1";
+    device = "/dev/disk/by-label/nixos";
     fsType = "ext4";
     options = [ "relatime" "errors=remount-ro" ];
   };
 
   fileSystems."/boot" = {
-    device = "/dev/disk/by-uuid/E06F-F08E";
+    device = "/dev/disk/by-label/boot";
     fsType = "vfat";
     options = [
       "fmask=0077"
@@ -55,7 +56,23 @@
     ];
   };
 
+  # VM images live on their own partition so qcow2 growth never competes
+  # with the root filesystem. libvirt's default pool and the `virt-disk`
+  # helper both write here — no module changes needed.
+  fileSystems."/var/lib/libvirt/images" = {
+    device = "/dev/disk/by-label/vmdata";
+    fsType = "ext4";
+    options = [ "noatime" ];
+  };
+
+  # Media + game libraries (Steam library folder lives inside).
+  fileSystems."/home/sid/media" = {
+    device = "/dev/disk/by-label/media";
+    fsType = "ext4";
+    options = [ "noatime" ];
+  };
+
   swapDevices = [
-    { device = "/dev/disk/by-uuid/4ac49bbd-8aa4-4bd1-829a-57f7e57cea13"; }
+    { device = "/dev/disk/by-label/swap"; }
   ];
 }
