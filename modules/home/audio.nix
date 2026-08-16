@@ -81,45 +81,26 @@ in
 
     # EasyEffects as a GApplication service, tied to the graphical session.
     # Plain `simple` type: D-Bus activation races with Type=dbus caused
-    # restart loops; the app registers its bus name itself.
-    systemd.user.services.easyeffects = {
-      Unit = {
-        Description = "EasyEffects — PipeWire audio DSP";
-        After = [ "pipewire.service" ];
-        PartOf = [ "graphical-session.target" ];
+    # restart loops; the app registers its bus name itself. One oneshot
+    # loader per loadOnStart preset is merged into the same binding.
+    systemd.user.services = {
+      easyeffects = {
+        Unit = {
+          Description = "EasyEffects — PipeWire audio DSP";
+          After = [ "pipewire.service" ];
+          PartOf = [ "graphical-session.target" ];
+        };
+        Service = {
+          Type = "simple";
+          ExecStart = "${pkgs.easyeffects}/bin/easyeffects --gapplication-service";
+        };
+        Install.WantedBy = [ "graphical-session.target" ];
       };
-      Service = {
-        Type = "simple";
-        ExecStart = "${pkgs.easyeffects}/bin/easyeffects --gapplication-service";
-      };
-      Install.WantedBy = [ "graphical-session.target" ];
-    };
-
-    # One oneshot per preset that wants to auto-load
-    systemd.user.services = lib.listToAttrs (map
+    } // lib.listToAttrs (map
       (p: {
         name = "easyeffects-load-${p.name}";
-        value = {
-          Unit = {
-            Description = "Load EasyEffects preset '${p.name}'";
-            After = [ "easyeffects.service" ];
-            PartOf = [ "graphical-session.target" ];
-          };
-          Service = {
-            Type = "dbus";
-            BusName = "com.github.wwmm.easyeffects";
-            ExecStart = "${pkgs.easyeffects}/bin/easyeffects --gapplication-service";
-            Restart = "on-failure";
-            RestartSec = 5;
-          };
-          Install.WantedBy = [ "graphical-session.target" ];
-        };
-      }
-      // lib.listToAttrs (map
-        (p: {
-          name = "easyeffects-load-${p.name}";
-          value = loaderService p;
-        })
-        autoLoad);
+        value = loaderService p;
+      })
+      autoLoad);
   };
 }

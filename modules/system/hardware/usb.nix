@@ -22,9 +22,10 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    # Thunderbolt/USB4 — kernel module + bolt daemon only when this
-    # machine actually exposes a USB4 router. Probe: `boltctl list`.
-    boot.kernelModules = lib.mkIf cfg.thunderbolt [ "thunderbolt" ];
+    # xHCI PCI host controller driver always; Thunderbolt/USB4 adds its
+    # kernel module and bolt authorization daemon only when this machine
+    # actually exposes a USB4 router. Probe: `boltctl list`.
+    boot.kernelModules = [ "xhci_pci" ] ++ lib.optionals cfg.thunderbolt [ "thunderbolt" ];
 
     # Bolt daemon for Thunderbolt/USB4 device authorization
     services.hardware.bolt.enable = cfg.thunderbolt;
