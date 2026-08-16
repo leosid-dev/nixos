@@ -70,7 +70,7 @@ in
   config = lib.mkIf cfg.enable {
     home.packages = [
       pkgs.easyeffects
-      pkgs.helvum
+      pkgs.crosspipe # PipeWire graph viewer (helvum removed in 26.05)
     ];
 
     # Deploy each preset under EasyEffects' standard directory layout

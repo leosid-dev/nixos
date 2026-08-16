@@ -56,7 +56,7 @@ in
       enable = true;
       enable32Bit = true;
       extraPackages = with pkgs; [
-        vaapiVdpau
+        libva-vdpau-driver # VDPAU→VA-API translation (vaapiVdpau renamed in 26.05)
         libvdpau-va-gl
       ];
     };

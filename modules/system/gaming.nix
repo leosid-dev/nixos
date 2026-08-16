@@ -26,7 +26,7 @@
 
     # ── Gaming & Compatibility Packages ──────────────────────────────
     environment.systemPackages = with pkgs; [
-      wineWowPackages.stable
+      wineWow64Packages.stable # WOW64 wine (wineWowPackages deprecated in 26.05)
       winetricks
       mangohud # Performance overlay (FPS, temperatures, usage)
       protonup-qt # Easy Proton-GE manager

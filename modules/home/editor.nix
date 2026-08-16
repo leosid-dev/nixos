@@ -14,7 +14,7 @@ let
   useCatppuccin = accent == "catppuccin-mocha";
 in
 {
-  imports = [ nixvim.homeManagerModules.nixvim ];
+  imports = [ nixvim.homeModules.nixvim ];
 
   config = {
     programs.nixvim = {
@@ -22,6 +22,10 @@ in
       defaultEditor = true;
       viAlias = true;
       vimAlias = true;
+
+      # nixvim pins its own nixpkgs; the flake input `follows` overrides that
+      # pin. Nixvim asks us to make the override explicit, so it is.
+      nixpkgs.source = nixvim.inputs.nixpkgs.outPath;
 
       globals.mapleader = " ";
 
