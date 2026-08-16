@@ -1,7 +1,8 @@
 # STATE.md — Architecture, Design Principles & Current State
 
-> Last updated: 2026-08-16 · 45 nix files · post-proofread fixes (niri KDL,
-> git/HM 26.05 renames, mount unit naming, monospace font, polkit agent)
+> Last updated: 2026-08-16 · 45 nix files · optimisation pass (closure trim:
+> wine sub-aspect off by default, CJK fonts optional, NixOS manuals dropped;
+> hardware: perfTuning + abmLevel knobs, lazytime mounts; generations capped at 3)
 
 ---
 
@@ -18,7 +19,7 @@ System, hardware, user, and home modules are organised as **aspects** — self-c
 
 | Namespace | Examples | What it owns |
 |---|---|---|
-| `aspects.{core,secrets,desktop,sound,power,fonts,gaming,ssh,virtualisation}` | System aspects | Nix settings, boot, locale, sound stack, gaming, KVM/virtiofs, … |
+| `aspects.{core,secrets,desktop,sound,power,fonts,gaming,ssh,virtualisation}` | System aspects | Nix settings, boot, locale, sound stack, gaming (+wine sub-aspect), KVM/virtiofs, … |
 | `aspects.hardware.{amdRembrandt,network,storage,usb}` | Hardware aspects | Per-device drivers, kernel modules, quirks |
 | `aspects.users.*` | User identity | OS-level user account declaration |
 | `aspects.home.*` | Home-Manager toggles | Per-persona HM opt-ins (audio, theme, …) |
@@ -226,3 +227,24 @@ nixos/
    true-black background, the flat macOS-style bar (workspaces/app icons
    left, clock center, stats + performance toggle right) and the
    top-center launcher.
+
+---
+
+## Optimisation pass (closure trims + hardware tuning)
+
+| Knob | Where | Default | Effect |
+|---|---|---|---|
+| `aspects.gaming.wine.enable` | gaming.nix | `false` | wineWow64+winetricks+bottles+protonup-qt gated; Steam+GameMode+MangoHud always on |
+| `aspects.fonts.cjk` | fonts.nix | `false` | drops noto-fonts-cjk-sans (~100 MB) unless enabled |
+| `documentation.nixos.enable` | core/default.nix | `false` | drops NixOS HTML/manual generation |
+| `aspects.hardware.amdRembrandt.perfTuning` | amd-rembrandt.nix | `true` | iommu=pt, nowatchdog, vm.swappiness=10 |
+| `aspects.hardware.amdRembrandt.abmLevel` | amd-rembrandt.nix | `null` | Adaptive Backlight Management knob |
+| `lazytime` on ext4 mounts | hosts/thinkbook/hardware.nix | on | journal write reduction |
+| `nix.settings.{auto-optimise-store,max-jobs,cores}` | core/nix.nix | — | store dedup on write + full parallelism |
+| `configurationLimit = 3` | core/boot.nix | 3 | bounds /boot + store-level generation prune |
+
+**Measured:** build closure (toplevel.drvPath recursive path-info) went from
+16,674 paths / ~47.3 GiB → 16,078 paths / ~45.1 GiB (**−596 paths, −2.2 GiB**).
+Verify with `nix path-info -r <drv>` before/after; runtime closure
+(post-install actual disk usage) is smaller than either because unused
+derivations in the build closure never get realised on the root filesystem.

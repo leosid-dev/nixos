@@ -44,7 +44,7 @@
   fileSystems."/" = {
     device = "/dev/disk/by-label/nixos";
     fsType = "ext4";
-    options = [ "relatime" "errors=remount-ro" ];
+    options = [ "relatime" "errors=remount-ro" "lazytime" ];
   };
 
   fileSystems."/boot" = {
@@ -62,14 +62,14 @@
   fileSystems."/var/lib/libvirt/images" = {
     device = "/dev/disk/by-label/vmdata";
     fsType = "ext4";
-    options = [ "noatime" ];
+    options = [ "noatime" "lazytime" ];
   };
 
   # Media + game libraries (Steam library folder lives inside).
   fileSystems."/home/sid/media" = {
     device = "/dev/disk/by-label/media";
     fsType = "ext4";
-    options = [ "noatime" ];
+    options = [ "noatime" "lazytime" ];
   };
 
   swapDevices = [
