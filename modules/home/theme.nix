@@ -18,13 +18,16 @@ in
     font = {
       name = lib.mkOption {
         type = lib.types.str;
-        default = "FiraCode Nerd Font";
+        default = "SF Pro";
         description = "Primary UI font family name (shared with greeter and desktop UI).";
       };
       package = lib.mkOption {
         type = lib.types.package;
-        default = pkgs.nerd-fonts.fira-code;
-        description = "Package providing the primary UI font.";
+        default = pkgs.sf-pro;
+        description = ''
+          Package providing the primary UI font. Apple SF Pro from the
+          apple-fonts flake (requires the host's appleFontsOverlay).
+        '';
       };
       size = lib.mkOption {
         type = lib.types.int;
@@ -34,13 +37,16 @@ in
       monospace = {
         name = lib.mkOption {
           type = lib.types.str;
-          default = "FiraCode Nerd Font";
+          default = "SF Mono";
           description = "Monospace font family for terminals and code (Kitty, Neovim).";
         };
         package = lib.mkOption {
           type = lib.types.package;
-          default = pkgs.nerd-fonts.fira-code;
-          description = "Package providing the monospace font.";
+          default = pkgs.sf-mono;
+          description = ''
+            Package providing the monospace font. Apple SF Mono from the
+            apple-fonts flake (requires the host's appleFontsOverlay).
+          '';
         };
       };
     };
@@ -171,6 +177,10 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # The monospace family is referenced by name in Kitty/Neovim; install the
+    # package here so it actually exists in the user's fontconfig.
+    home.packages = [ theme.font.monospace.package ];
+
     gtk = {
       enable = true;
       # Adwaita is the only GTK theme installed; the accent palette drives

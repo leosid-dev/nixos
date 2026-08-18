@@ -29,6 +29,14 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Apple San Francisco fonts (SF Pro UI + SF Mono terminal). Not in
+    # nixpkgs; this flake packages the official DMGs from Apple's CDN and
+    # exposes them via overlays.default (pkgs.sf-pro, pkgs.sf-mono, ...).
+    apple-fonts = {
+      url = "github:Lyndeno/apple-fonts.nix";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
+
     # LLM coding agents (opencode, grok, ...). Deliberately does NOT follow
     # our stable nixpkgs: upstream builds/tests only against its own pinned
     # nixpkgs-unstable, and following a stable branch would break. Keeping
@@ -49,6 +57,7 @@
       sops-nix,
       nixvim,
       llm-agents,
+      apple-fonts,
       ...
     }:
     let
@@ -62,6 +71,7 @@
           sops-nix
           nixvim
           llm-agents
+          apple-fonts
           ;
       };
 

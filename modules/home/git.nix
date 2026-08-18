@@ -3,7 +3,6 @@
 {
   programs.git = {
     enable = true;
-
     # Global gitignore
     ignores = [
       "*~"
@@ -19,6 +18,8 @@
     # Settings + aliases (HM >= 26.05: `settings` replaces `extraConfig`
     # and `aliases`).
     settings = {
+      user.name = "SIDAHRTH P M";
+      user.email = "beastsid2429@gmail.com";
       init.defaultBranch = "main";
       pull.rebase = true;
       push.autoSetupRemote = true;

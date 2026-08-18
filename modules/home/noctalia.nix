@@ -5,10 +5,9 @@
 # which happens only when aspects.home.noctalia.enable is on.
 #
 # Visual design (keys verified against the upstream config schema):
-# - Bar: macOS-style — full-width straight rectangle (radius 0, zero margins,
-#   no shadow, no capsules); workspaces + running-app icons (taskbar) left,
-#   clock center, resource stats / battery rate / performance-mode toggle /
-#   system icons right. The app launcher floats at top-center of the screen.
+# - Bar: macOS-style full-width rectangle with grouped capsules inside;
+#   unlabeled workspace pills + running-app icons left, date center, and one
+#   compact system-status capsule right. Launcher remains keyboard-driven.
 # - Theme: custom monochrome palette (m* Material schema) anchored at true
 #   black (LCD), with full dark and light variants from lib/palettes.nix.
 #   Mode follows aspects.theme.mode directly.
@@ -95,6 +94,10 @@ in
             launcher_placement = "floating";
             launcher_position = "top_center";
           };
+          animation = {
+            enabled = true;
+            speed = 1.25;
+          };
         };
 
         theme = noctaliaTheme // {
@@ -102,43 +105,109 @@ in
           pure_black_dark = true; # keep dark surfaces at true black (LCD)
         };
 
-        # Straight rectangle, flush with the screen edges, no capsules.
+        # The bar stays square and flush; capsules only group its contents.
         bar.main = {
           position = "top";
+          thickness = 32;
+          padding = 12;
+          widget_spacing = 8;
           radius = 0;
           margin_ends = 0;
           margin_edge = 0;
+          background_opacity = 1.0;
+          border_width = 0;
           shadow = false;
           capsule = false;
           reserve_space = true;
-          start = [
-            "workspaces"
-            "taskbar" # running-app indicators (icons only, see widget.taskbar)
-          ];
+          start = [ "group:desktop" ];
           center = [ "clock" ];
-          end = [
-            "cpu" # seeded sysmon instances: resource stats
-            "temp"
-            "ram"
-            "battery" # power consumption (rate in W, see widget.battery)
-            "power_profile" # performance-mode toggle
-            "network"
-            "bluetooth"
-            "volume"
-            "brightness"
-            "tray"
-            "notifications"
-            "control-center"
-            "session"
+          end = [ "group:status" ];
+          capsule_group = [
+            {
+              id = "desktop";
+              members = [
+                "workspaces"
+                "taskbar"
+              ];
+              fill = "surface_variant";
+              padding = 6.0;
+              opacity = 0.9;
+              widget_spacing = 6;
+              enabled = true;
+            }
+            {
+              id = "status";
+              members = [
+                "system_monitor"
+                "power_profile"
+                "battery"
+                "session"
+              ];
+              fill = "surface_variant";
+              padding = 6.0;
+              opacity = 0.9;
+              widget_spacing = 8;
+              enabled = true;
+            }
           ];
         };
 
-        widget.taskbar.show_window_title = false; # icon-only app indicators
+        system.monitor = {
+          enabled = true;
+          cpu_poll_seconds = 2.0;
+          gpu_poll_seconds = 5.0;
+          memory_poll_seconds = 2.0;
+          network_poll_seconds = 3.0;
+          disk_poll_seconds = 10.0;
+        };
+
+        control_center = {
+          sidebar = "compact";
+          sidebar_section = "compact";
+          show_shortcut_labels = false;
+        };
+
+        widget.workspaces = {
+          style = "regular";
+          show_labels = false;
+          focused_color = "primary";
+          occupied_color = "secondary";
+          empty_color = "surface_variant";
+        };
+        widget.taskbar = {
+          show_window_title = false;
+          item_spacing = 6;
+          icon_scale = 0.95;
+          show_active_indicator = true;
+          group_single_icon_per_app = true;
+        };
+        widget.clock = {
+          format = "{:%a, %d %b}";
+          tooltip_format = "{:%A, %B %d, %Y - %H:%M}";
+        };
+        widget.system_monitor = {
+          type = "sysmon";
+          stat = "cpu_usage";
+          visualization = "none";
+          show_value = false;
+          show_glyph = true;
+          actions.left = "panel-toggle control-center system";
+        };
         widget.battery = {
-          show_label = true;
-          label_content = "rate"; # charge/discharge rate in watts
+          display_mode = "glyph";
+          show_label = false;
         };
       };
+    };
+
+    # The graphical-session target waits for desktop portals, which can spend
+    # tens of seconds probing backends. Start the shell as soon as Niri is up.
+    systemd.user.services.noctalia = {
+      Unit = {
+        After = lib.mkForce [ "niri.service" ];
+        PartOf = lib.mkForce [ "niri.service" ];
+      };
+      Install.WantedBy = lib.mkForce [ "niri.service" ];
     };
   };
 }

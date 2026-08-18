@@ -17,7 +17,7 @@
 #
 # Option-gated (explicit persona selection):
 #   - terminal, theme, noctalia, audio, agents
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 {
   imports = [
     ../modules/home/shell.nix
@@ -59,5 +59,17 @@
   aspects.theme = {
     accent = "monochrome";
     mode = "dark";
+
+    # Explicit font persona: Apple SF Pro for UI, SF Mono for code.
+    # Packages come from the apple-fonts flake overlay (pkgs.sf-pro /
+    # pkgs.sf-mono); the profile owns the choice, modules only default.
+    font = {
+      name = "SF Pro";
+      package = pkgs.sf-pro;
+      monospace = {
+        name = "SF Mono";
+        package = pkgs.sf-mono;
+      };
+    };
   };
 }

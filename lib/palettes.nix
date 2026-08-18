@@ -30,7 +30,7 @@
       # Focus ring for Niri
       focus = {
         active = "#e6e6e6";
-        inactive = "#3d3d3d";
+        inactive = "#808080";
         background = "#000000";
       };
 

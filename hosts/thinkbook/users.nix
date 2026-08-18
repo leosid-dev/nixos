@@ -13,6 +13,15 @@
     # Flake checkout path for the `rebuild` shell alias (host data)
     aspects.home.shell.flakePath = "/home/sid/nixos";
 
+    # The built-in panel is 1920x1200 at 60 Hz. Pin the native mode and run
+    # at 100% scaling: one logical pixel per physical pixel, no fractional
+    # scaling cost, full use of the panel's workspace.
+    aspects.home.niri.output = {
+      name = "eDP-1";
+      mode = "1920x1200@60.002";
+      scale = 1.00;
+    };
+
     home = {
       username = "sid";
       homeDirectory = "/home/sid";

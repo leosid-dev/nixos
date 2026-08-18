@@ -1,6 +1,6 @@
 # modules/system/desktop/default.nix — Desktop environment aspect.
 #
-# Provides: Niri compositor, XDG portals, noctalia-greeter login, Bluetooth UI, Firefox.
+# Provides: Niri compositor, XDG portals, noctalia-greeter login, Firefox.
 # Gated by aspects.desktop.enable — leave off for a headless server.
 { lib, ... }:
 {
@@ -10,7 +10,6 @@
     ./niri.nix
     ./portals.nix
     ./login.nix
-    ./bluetooth.nix
     ./browser.nix
   ];
 }

@@ -1,8 +1,8 @@
 # STATE.md — Architecture, Design Principles & Current State
 
-> Last updated: 2026-08-16 · 50 nix files · production-ready cleanup pass (explicit
-> option-shape sweep, structured theme palette, FiraCode Nerd Font defaults,
-> dedicated guest-home virtiofs layout, virtualisation modular split, flake checks)
+> Last updated: 2026-08-17 · visual polish pass (tap-to-click + natural scroll,
+> snappy Niri bindings/animations, rectangular Noctalia bar with desktop and
+> status capsule groups, date-only clock, single sysmon pill, no Blueman applet)
 
 ---
 
@@ -12,7 +12,7 @@
 Every piece of system and user configuration is expressed in Nix — no imperative scripts, no hidden state. The configuration aims for the smallest surface area that delivers a complete, polished desktop experience.
 
 ### 2. Agnostic Top-Level
-`flake.nix` knows nothing about specific hosts, users, or hardware. It wires inputs (nixpkgs, home-manager, noctalia, noctalia-greeter, sops-nix, nixvim, llm-agents) into a pure `lib`, and delegates host discovery to `hosts/default.nix` which auto-scans subdirectories. Adding a new machine means creating a directory under `hosts/` — zero changes to the flake.
+`flake.nix` knows nothing about specific hosts, users, or hardware. It wires inputs (nixpkgs, home-manager, noctalia, noctalia-greeter, sops-nix, nixvim, llm-agents, apple-fonts) into a pure `lib`, and delegates host discovery to `hosts/default.nix` which auto-scans subdirectories. Adding a new machine means creating a directory under `hosts/` — zero changes to the flake.
 
 ### 3. Aspect-Oriented Modules & Modular Users
 System, hardware, user, and home modules are organised as **aspects** — self-contained concerns that can be composed or removed per host or per persona:
@@ -104,7 +104,7 @@ nixos/
 │   │   ├── gaming.nix                     # Steam, GameMode, Wine, MangoHud (+remotePlay/dedicatedServer sub-options)
 │   │   ├── sound.nix                      # PipeWire + ALSA + PulseAudio compat (+jack sub-option)
 │   │   ├── power.nix                      # power-profiles-daemon + upower
-│   │   ├── fonts.nix                      # System font packages (Noto, Noto Emoji, FiraCode NF UI fallback)
+│   │   ├── fonts.nix                      # System font packages (Noto, Noto Emoji, SF Pro UI for greeter)
 │   │   ├── core/                          # Always-on fundamentals (aspects.core.enable)
 │   │   │   ├── default.nix                # Index
 │   │   │   ├── boot.nix                   # systemd-boot (limit 3), kernelPackages option, tmpfs, zram
@@ -138,7 +138,7 @@ nixos/
 │       ├── niri.nix                       # Niri user config.kdl (always-on with desktop profile, palette-derived rings)
 │       ├── wayland.nix                    # grim/slurp/wl-clipboard/xwayland-satellite/qt-wayland
 │       ├── terminal.nix                   # Kitty, structured palette, sets TERMINAL; opacity/fontSize/padding knobs
-│       ├── theme.nix                      # GTK/QT/cursor/dconf (accent enum, mode, FiraCode NF default, palette)
+│       ├── theme.nix                      # GTK/QT/cursor/dconf (accent enum, mode, SF Pro/SF Mono default, palette)
 │       ├── noctalia.nix                   # Noctalia v5 shell (m* custom palette dark+light, reads theme.mode)
 │       ├── audio.nix                      # EasyEffects DSP + presets option + graphViewer.enable
 │       └── agents.nix                     # LLM agents from llm-agents.nix (packages default [])
@@ -168,7 +168,7 @@ nixos/
 | RAM | 16 GB DDR5 |
 | Storage | `nvme0n1` Micron: ESP "boot" (2 GiB) + swap (8 GiB) + root "nixos" (plain ext4 without LUKS — accepted design); `nvme1n1` KIOXIA: "vmdata" (150 GiB → `/var/lib/libvirt` for images + guest homes) + "media" (rest → `/home/sid/media`). Label-based refs; layout created by WALKTHROUGH.md |
 | WiFi | MediaTek MT7921e (`14c3:0616`, `disable_aspm`) |
-| Bluetooth | Foxconn MediaTek (btusb), Blueman in desktop aspect |
+| Bluetooth | Foxconn MediaTek (btusb), Noctalia control-center Bluetooth service (Blueman applet removed) |
 | Audio | Realtek ALC257 (HDA) — no smart amps; DSP via EasyEffects profile preset |
 | USB4 | Rembrandt USB4 router present → bolt enabled |
 
@@ -188,7 +188,7 @@ nixos/
 | Audio | PipeWire + EasyEffects DSP | stable |
 | Shell | Zsh (with autosuggestions & syntax highlighting) | stable |
 | Theme | Monochrome (true-black) via `aspects.theme.accent`; Adwaita GTK/QT + dconf; structured `aspects.theme.palette` | stable |
-| Fonts | FiraCode Nerd Font (UI & monospace), Noto Fonts, Noto Color Emoji | stable |
+| Fonts | SF Pro (UI) + SF Mono (code) via apple-fonts flake, Noto Fonts, Noto Color Emoji | stable + flake input |
 | Firmware | fwupd (LVFS, manual `fwupdmgr update`) | stable |
 
 ---

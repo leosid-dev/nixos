@@ -8,8 +8,13 @@
 let
   system = "x86_64-linux";
 
-  # Merge global + host-specific overlays
-  overlays = (import ../../overlays/core.nix) ++ (import ./overlays.nix);
+  # Merge global + host-specific overlays.
+  # appleFontsOverlay adds pkgs.sf-pro / pkgs.sf-mono (Apple SF fonts from
+  # the apple-fonts flake) for the system font stack and Home Manager.
+  overlays =
+    (import ../../overlays/core.nix)
+    ++ (import ./overlays.nix)
+    ++ [ lib.appleFontsOverlay ];
 
   # Build stable + unstable package channels
   # Unfree policy is owned by this host (gaming/firmware aspects need it).
@@ -58,6 +63,7 @@ lib.mkHost {
         # OpenSSH server: off by default; enable after adding authorized keys below.
         ssh.enable = false;
         secrets.enable = true;
+        secrets.sshKeyPaths = ["/etc/ssh/thinkbook_ed25519"];
 
         # KVM/QEMU work VMs (Ubuntu LTS).
         # Dedicated host-backed virtiofs home on the vmdata partition:

@@ -6,8 +6,10 @@ Overview
 - Canonical accent: `aspects.theme.accent`. Noctalia, Neovim (colorscheme),
   Kitty (palette) and Niri (focus ring + workspace background) all read
   from `aspects.theme.palette`.
-- Default fonts: `FiraCode Nerd Font` is the default for both UI and code,
-  sharing one glyph-complete family across terminal, shell, and editor.
+- Default fonts: Apple `SF Pro` for UI and `SF Mono` for code, from the
+  `apple-fonts` flake (`github:Lyndeno/apple-fonts.nix`, official DMGs from
+  Apple's CDN). Hosts opt in via `lib.appleFontsOverlay`; the desktop
+  profile selects the families explicitly under `aspects.theme.font`.
 
 Quick start (what to enable)
 - The desktop persona (`profiles/desktop.nix`) explicitly enables home
@@ -15,13 +17,29 @@ Quick start (what to enable)
   `hosts/<host>/users.nix` or in a new profile. Niri is mandatory for the
   desktop profile.
 
-Example: change Niri gaps, corner radius and animation feel (host-level)
+Example: configure the host output and tune Niri layout (host-level)
 
   aspects.home.niri = {
+    output = {
+      name = "eDP-1";
+      mode = "1920x1200@60.002";
+      scale = 1.0;
+    };
     gaps = 12;
     cornerRadius = 6;        # window corner radius
     animationDuration = 300; # ms for the shared bezier easing
     overshoot = 0.2;         # 0 = no overshoot; higher = more bounce
+  };
+
+Example: change the UI / monospace fonts (profile-level)
+
+  aspects.theme.font = {
+    name = "SF Pro";
+    package = pkgs.sf-pro;
+    monospace = {
+      name = "SF Mono";
+      package = pkgs.sf-mono;
+    };
   };
 
 Example: tune the Kitty terminal
@@ -77,26 +95,31 @@ Neovim
 
 What the config files provide
 - Niri: `xdg.configFile."niri/config.kdl"` is generated from
-  `aspects.home.niri` (gaps, corner radius, one shared cubic-bezier easing
-  with a slight overshoot before settling, center-focused-column, hotkeys)
-  plus a focus ring and workspace background keyed by
-  `aspects.theme.palette.focus`.
+  `aspects.home.niri` (host output mode/scale, gaps, corner radius, one shared
+  cubic-bezier easing with a slight overshoot before settling,
+  center-focused-column, workspace navigation and hotkeys) plus a focus ring
+  and workspace background keyed by `aspects.theme.palette.focus`.
   The Mod+Return spawn command comes from
   `aspects.home.niri.terminalCommand`, which defaults to the canonical
   `TERMINAL` session variable set by the terminal aspect.
 - Noctalia: `programs.noctalia.settings` receives the theme mode (from
   `aspects.theme.mode`), the palette source (from `aspects.theme.accent`),
-  and the bar layout — macOS-style straight rectangle: workspaces +
-  running-app icons (taskbar) left, clock center, resource stats / battery
-  rate / performance-mode toggle / system icons right. The app launcher
-  floats at top-center of the screen. A custom monochrome palette (m*
-  Material schema) with dark and light variants ships with the module.
+  and the bar layout — macOS-style straight rectangle with internal capsule
+  groups: unlabeled workspace pills + running-app icons (taskbar) in the
+  desktop capsule left, date center, and one compact system-status capsule
+  (system monitor, power profile, battery glyph, session menu) right. The app
+  launcher floats at top-center of the screen. A custom monochrome palette
+  (m* Material schema) with dark and light variants ships with the module.
 - Kitty: palette derived from `aspects.theme.palette.terminal` in
   `modules/home/terminal.nix`; opacity/fontSize/padding/scrollback are
   sub-options under `aspects.home.terminal`. The module also sets the
   canonical `TERMINAL` session variable.
 - GTK/dconf: Adwaita theme always; monochrome accent also sets a slate
   libadwaita accent color.
+- Fonts: `aspects.theme.font` is the single source of truth — GTK/dconf
+  (UI), Noctalia (`shell.font_family`), and Kitty/Neovim (monospace) all
+  read it. The theme module installs the monospace package into the user's
+  fontconfig; the system fonts aspect installs the UI font for the greeter.
 
 Verification (on a machine with Nix)
 - `nix eval .#nixosConfigurations.thinkbook.config.system.build.toplevel.drvPath`
@@ -105,15 +128,18 @@ Verification (on a machine with Nix)
 Manual functional checks (on the target host)
 - Greeter: boot, confirm the login screen uses the console keymap and
   starts a niri session.
-- Niri: login, verify gaps/center-focused behavior; window animations
-  should overshoot slightly then settle; test hotkeys (terminal spawn via
-  Mod+Return, focus/move, screenshot-to-clipboard).
-- Noctalia: check the bar layout (workspaces/app icons left, clock
-  center, stats + performance toggle + icons right), the launcher
-  opening at top-center, the theme mode, and that the palette matches
+- Niri: login, verify the configured output scale, gaps/center-focused
+  behavior, and window animations; test hotkeys (terminal spawn via
+  Mod+Return, overview via Mod+O, workspace navigation, focus/move,
+  launcher via Mod+D, and screenshot-to-clipboard).
+- Noctalia: check the sparse bar layout (workspaces/app icons left, clock
+  center, compact indicators + control center right), the launcher opening at
+  top-center, the theme mode, and that the palette matches
   `aspects.theme.accent`.
 - Neovim: open a `.nix` file, confirm nixd diagnostics and telescope
   keymaps work.
+- Fonts: `fc-match "SF Pro"` and `fc-match "SF Mono"` resolve to the SF
+  families; Kitty, Noctalia, and the greeter render in them.
 
 Where to override (summary)
 - Profile-level: `profiles/desktop.nix` — persona-wide selections.
