@@ -2,7 +2,12 @@
 #
 # Generic GTK/QT/cursor/dconf theming and cross-cutting theme options.
 # Declares the canonical palette, font stack, cursor, mode, and accent choice.
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.aspects.home.theme;
   theme = config.aspects.theme;
@@ -18,34 +23,32 @@ in
     font = {
       name = lib.mkOption {
         type = lib.types.str;
-        default = "SF Pro";
+        default = "Inter";
         description = "Primary UI font family name (shared with greeter and desktop UI).";
       };
       package = lib.mkOption {
         type = lib.types.package;
-        default = pkgs.sf-pro;
+        default = pkgs.inter;
         description = ''
-          Package providing the primary UI font. Apple SF Pro from the
-          apple-fonts flake (requires the host's appleFontsOverlay).
+          Package providing the primary quasi-proportional UI font.
         '';
       };
       size = lib.mkOption {
         type = lib.types.int;
-        default = 11;
+        default = 12;
         description = "Base font size for desktop UI.";
       };
       monospace = {
         name = lib.mkOption {
           type = lib.types.str;
-          default = "SF Mono";
+          default = "JetBrains Mono";
           description = "Monospace font family for terminals and code (Kitty, Neovim).";
         };
         package = lib.mkOption {
           type = lib.types.package;
-          default = pkgs.sf-mono;
+          default = pkgs.jetbrains-mono;
           description = ''
-            Package providing the monospace font. Apple SF Mono from the
-            apple-fonts flake (requires the host's appleFontsOverlay).
+            Package providing the terminal-optimized monospace font.
           '';
         };
       };
@@ -67,7 +70,11 @@ in
     };
 
     accent = lib.mkOption {
-      type = lib.types.enum [ "monochrome" "catppuccin-mocha" "adwaita" ];
+      type = lib.types.enum [
+        "monochrome"
+        "catppuccin-mocha"
+        "adwaita"
+      ];
       default = "monochrome";
       description = ''
         Accent palette name; the single source of truth for colors across
@@ -76,7 +83,10 @@ in
     };
 
     mode = lib.mkOption {
-      type = lib.types.enum [ "dark" "light" ];
+      type = lib.types.enum [
+        "dark"
+        "light"
+      ];
       default = "dark";
       description = "Theme mode (dark or light surface colors).";
     };

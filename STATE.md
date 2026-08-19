@@ -1,8 +1,9 @@
 # STATE.md — Architecture, Design Principles & Current State
 
-> Last updated: 2026-08-17 · visual polish pass (tap-to-click + natural scroll,
-> snappy Niri bindings/animations, rectangular Noctalia bar with desktop and
-> status capsule groups, date-only clock, single sysmon pill, no Blueman applet)
+> Last updated: 2026-08-18 · macOS-style bar redesign (flat three-lane layout:
+> workspaces + taskbar left, date+time center, tray + control-center +
+> notifications right; capsule groups removed; Noctalia window size now a
+> niri aspect knob)
 
 ---
 
@@ -12,7 +13,7 @@
 Every piece of system and user configuration is expressed in Nix — no imperative scripts, no hidden state. The configuration aims for the smallest surface area that delivers a complete, polished desktop experience.
 
 ### 2. Agnostic Top-Level
-`flake.nix` knows nothing about specific hosts, users, or hardware. It wires inputs (nixpkgs, home-manager, noctalia, noctalia-greeter, sops-nix, nixvim, llm-agents, apple-fonts) into a pure `lib`, and delegates host discovery to `hosts/default.nix` which auto-scans subdirectories. Adding a new machine means creating a directory under `hosts/` — zero changes to the flake.
+`flake.nix` knows nothing about specific hosts, users, or hardware. It wires inputs (nixpkgs, home-manager, noctalia, noctalia-greeter, sops-nix, nixvim, llm-agents) into a pure `lib`, and delegates host discovery to `hosts/default.nix` which auto-scans subdirectories. Adding a new machine means creating a directory under `hosts/` — zero changes to the flake.
 
 ### 3. Aspect-Oriented Modules & Modular Users
 System, hardware, user, and home modules are organised as **aspects** — self-contained concerns that can be composed or removed per host or per persona:
@@ -104,7 +105,7 @@ nixos/
 │   │   ├── gaming.nix                     # Steam, GameMode, Wine, MangoHud (+remotePlay/dedicatedServer sub-options)
 │   │   ├── sound.nix                      # PipeWire + ALSA + PulseAudio compat (+jack sub-option)
 │   │   ├── power.nix                      # power-profiles-daemon + upower
-│   │   ├── fonts.nix                      # System font packages (Noto, Noto Emoji, SF Pro UI for greeter)
+│   │   ├── fonts.nix                      # System font packages (Noto, Noto Emoji, Inter for greeter)
 │   │   ├── core/                          # Always-on fundamentals (aspects.core.enable)
 │   │   │   ├── default.nix                # Index
 │   │   │   ├── boot.nix                   # systemd-boot (limit 3), kernelPackages option, tmpfs, zram
@@ -138,7 +139,7 @@ nixos/
 │       ├── niri.nix                       # Niri user config.kdl (always-on with desktop profile, palette-derived rings)
 │       ├── wayland.nix                    # grim/slurp/wl-clipboard/xwayland-satellite/qt-wayland
 │       ├── terminal.nix                   # Kitty, structured palette, sets TERMINAL; opacity/fontSize/padding knobs
-│       ├── theme.nix                      # GTK/QT/cursor/dconf (accent enum, mode, SF Pro/SF Mono default, palette)
+│       ├── theme.nix                      # GTK/QT/cursor/dconf (accent enum, mode, font defaults, palette)
 │       ├── noctalia.nix                   # Noctalia v5 shell (m* custom palette dark+light, reads theme.mode)
 │       ├── audio.nix                      # EasyEffects DSP + presets option + graphViewer.enable
 │       └── agents.nix                     # LLM agents from llm-agents.nix (packages default [])
@@ -188,7 +189,7 @@ nixos/
 | Audio | PipeWire + EasyEffects DSP | stable |
 | Shell | Zsh (with autosuggestions & syntax highlighting) | stable |
 | Theme | Monochrome (true-black) via `aspects.theme.accent`; Adwaita GTK/QT + dconf; structured `aspects.theme.palette` | stable |
-| Fonts | SF Pro (UI) + SF Mono (code) via apple-fonts flake, Noto Fonts, Noto Color Emoji | stable + flake input |
+| Fonts | Inter (GUI) + JetBrains Mono (TUI), Noto Fonts, Noto Color Emoji | stable |
 | Firmware | fwupd (LVFS, manual `fwupdmgr update`) | stable |
 
 ---
@@ -233,7 +234,8 @@ nixos/
    `vulkaninfo` (Venus).
 9. **Visual:** `niri validate` against the generated config, then check
    the bezier overshoot/settle, radius-4 corners, grayscale focus ring on
-   true-black background, the flat macOS-style bar and top-center launcher.
+   true-black background, and the flat macOS-style bar: workspaces + taskbar
+   left, date+time center, tray + control-center + notifications right.
 
 ---
 

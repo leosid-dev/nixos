@@ -80,6 +80,24 @@ in
         aspect enabled) omits the keybind.
       '';
     };
+    noctaliaWindowSize = {
+      width = lib.mkOption {
+        type = lib.types.nullOr lib.types.int;
+        default = null;
+        description = ''
+          Fixed column width for floating Noctalia shell windows (launcher,
+          control center, settings). null allows Noctalia to manage its own size.
+        '';
+      };
+      height = lib.mkOption {
+        type = lib.types.nullOr lib.types.int;
+        default = null;
+        description = ''
+          Fixed height for floating Noctalia shell windows (launcher,
+          control center, settings). null allows Noctalia to manage its own size.
+        '';
+      };
+    };
   };
 
   config = {
@@ -200,8 +218,10 @@ window-rule {
 window-rule {
     match app-id="dev.noctalia.Noctalia"
     open-floating true
-    default-column-width { fixed 1080; }
-    default-window-height { fixed 920; }
+    ${lib.optionalString (cfg.noctaliaWindowSize.width != null)
+      "default-column-width { fixed ${toString cfg.noctaliaWindowSize.width}; }"}
+    ${lib.optionalString (cfg.noctaliaWindowSize.height != null)
+      "default-window-height { fixed ${toString cfg.noctaliaWindowSize.height}; }"}
 }
 
 window-rule {

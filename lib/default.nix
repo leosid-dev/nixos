@@ -2,7 +2,7 @@
 #
 # Every helper is a pure function. The attribute set returned here is
 # the *only* interface the rest of the repo consumes from `lib`.
-{ nixpkgs, nixpkgs-unstable, home-manager, noctalia, sops-nix, noctalia-greeter, nixvim, llm-agents, apple-fonts }:
+{ nixpkgs, nixpkgs-unstable, home-manager, noctalia, sops-nix, noctalia-greeter, nixvim, llm-agents }:
 let
   nixpkgsLib = nixpkgs.lib;
 
@@ -19,11 +19,7 @@ let
   # ── Pure color palettes table ──────────────────────────────────────────
   palettes = import ./palettes.nix;
 
-  # ── Apple SF fonts overlay (adds pkgs.sf-pro, pkgs.sf-mono, ...) ───────
-  # Hosts opt in by appending it to their overlay list; HM modules see the
-  # same packages through useGlobalPkgs.
-  appleFontsOverlay = apple-fonts.overlays.default;
 in
 {
-  inherit nixpkgsLib channels mkHost palettes appleFontsOverlay;
+  inherit nixpkgsLib channels mkHost palettes;
 }

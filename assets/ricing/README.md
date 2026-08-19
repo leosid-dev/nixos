@@ -6,10 +6,9 @@ Overview
 - Canonical accent: `aspects.theme.accent`. Noctalia, Neovim (colorscheme),
   Kitty (palette) and Niri (focus ring + workspace background) all read
   from `aspects.theme.palette`.
-- Default fonts: Apple `SF Pro` for UI and `SF Mono` for code, from the
-  `apple-fonts` flake (`github:Lyndeno/apple-fonts.nix`, official DMGs from
-  Apple's CDN). Hosts opt in via `lib.appleFontsOverlay`; the desktop
-  profile selects the families explicitly under `aspects.theme.font`.
+- Default fonts: `Inter` for graphical interfaces and `JetBrains Mono` for
+  terminal applications, both from the pinned nixpkgs. The desktop profile
+  selects both families explicitly under `aspects.theme.font`.
 
 Quick start (what to enable)
 - The desktop persona (`profiles/desktop.nix`) explicitly enables home
@@ -34,11 +33,11 @@ Example: configure the host output and tune Niri layout (host-level)
 Example: change the UI / monospace fonts (profile-level)
 
   aspects.theme.font = {
-    name = "SF Pro";
-    package = pkgs.sf-pro;
+    name = "Inter";
+    package = pkgs.inter;
     monospace = {
-      name = "SF Mono";
-      package = pkgs.sf-mono;
+      name = "JetBrains Mono";
+      package = pkgs.jetbrains-mono;
     };
   };
 
@@ -138,8 +137,8 @@ Manual functional checks (on the target host)
   `aspects.theme.accent`.
 - Neovim: open a `.nix` file, confirm nixd diagnostics and telescope
   keymaps work.
-- Fonts: `fc-match "SF Pro"` and `fc-match "SF Mono"` resolve to the SF
-  families; Kitty, Noctalia, and the greeter render in them.
+- Fonts: `fc-match "Inter"` and `fc-match "JetBrains Mono"` resolve to the
+  configured families; Kitty, Noctalia, and the greeter render in them.
 
 Where to override (summary)
 - Profile-level: `profiles/desktop.nix` — persona-wide selections.

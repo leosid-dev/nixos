@@ -5,13 +5,19 @@
 # which happens only when aspects.home.noctalia.enable is on.
 #
 # Visual design (keys verified against the upstream config schema):
-# - Bar: macOS-style full-width rectangle with grouped capsules inside;
-#   unlabeled workspace pills + running-app icons left, date center, and one
-#   compact system-status capsule right. Launcher remains keyboard-driven.
+# - Bar: macOS-style menu bar. Left: workspace pills + active app name/title.
+#   Center: date and time. Right: dynamic status menus (media, tray, privacy,
+#   network, bluetooth, volume, battery), control center, notification center.
+#   Launcher remains keyboard-driven.
 # - Theme: custom monochrome palette (m* Material schema) anchored at true
 #   black (LCD), with full dark and light variants from lib/palettes.nix.
 #   Mode follows aspects.theme.mode directly.
-{ config, lib, noctalia, ... }:
+{
+  config,
+  lib,
+  noctalia,
+  ...
+}:
 let
   cfg = config.aspects.home.noctalia;
   theme = config.aspects.theme;
@@ -105,7 +111,7 @@ in
           pure_black_dark = true; # keep dark surfaces at true black (LCD)
         };
 
-        # The bar stays square and flush; capsules only group its contents.
+        # macOS-style bar: flat, flush, three lanes replicating macOS HIG.
         bar.main = {
           position = "top";
           thickness = 32;
@@ -119,36 +125,21 @@ in
           shadow = false;
           capsule = false;
           reserve_space = true;
-          start = [ "group:desktop" ];
+          start = [
+            "workspaces"
+            "active_window"
+          ];
           center = [ "clock" ];
-          end = [ "group:status" ];
-          capsule_group = [
-            {
-              id = "desktop";
-              members = [
-                "workspaces"
-                "taskbar"
-              ];
-              fill = "surface_variant";
-              padding = 6.0;
-              opacity = 0.9;
-              widget_spacing = 6;
-              enabled = true;
-            }
-            {
-              id = "status";
-              members = [
-                "system_monitor"
-                "power_profile"
-                "battery"
-                "session"
-              ];
-              fill = "surface_variant";
-              padding = 6.0;
-              opacity = 0.9;
-              widget_spacing = 8;
-              enabled = true;
-            }
+          end = [
+            "media"
+            "tray"
+            "privacy"
+            "network"
+            "bluetooth"
+            "volume"
+            "battery"
+            "control-center"
+            "notifications"
           ];
         };
 
@@ -174,28 +165,55 @@ in
           occupied_color = "secondary";
           empty_color = "surface_variant";
         };
-        widget.taskbar = {
-          show_window_title = false;
-          item_spacing = 6;
-          icon_scale = 0.95;
-          show_active_indicator = true;
-          group_single_icon_per_app = true;
+        widget.active_window = {
+          display = "icon_and_text";
+          title_scroll = "on_hover";
+          max_length = 300.0;
+          show_empty_label = false;
         };
         widget.clock = {
-          format = "{:%a, %d %b}";
-          tooltip_format = "{:%A, %B %d, %Y - %H:%M}";
+          format = "{:%a %b %d  %H:%M}";
+          tooltip_format = "{:%A, %B %d, %Y}";
         };
-        widget.system_monitor = {
-          type = "sysmon";
-          stat = "cpu_usage";
-          visualization = "none";
-          show_value = false;
-          show_glyph = true;
-          actions.left = "panel-toggle control-center system";
+        widget.media = {
+          hide_when_no_media = true;
+          album_art_only = false;
+          hide_album_art = false;
+          hide_artist = false;
+          art_size = 18.0;
+          max_length = 180.0;
+          title_scroll = "on_hover";
+        };
+        widget.tray = {
+          hide_passive = true;
+          drawer = false;
+        };
+        widget.privacy = {
+          hide_inactive = true;
+        };
+        widget.network = {
+          show_label = false;
+          vpn_status = "replace";
+        };
+        widget.bluetooth = {
+          show_label = false;
+          hide_when_no_connected_device = true;
+        };
+        widget.volume = {
+          show_label = false;
         };
         widget.battery = {
-          display_mode = "glyph";
-          show_label = false;
+          display_mode = "graphic";
+          show_label = true;
+          label_content = "percent";
+          hide_when_full = false;
+          hide_when_plugged = false;
+        };
+        widget.control-center = {
+          glyph = "adjustments-horizontal";
+        };
+        widget.notifications = {
+          hide_when_no_unread = false;
         };
       };
     };

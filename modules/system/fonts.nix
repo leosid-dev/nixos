@@ -14,7 +14,7 @@ in
     uiFont = {
       name = lib.mkOption {
         type = lib.types.str;
-        default = "SF Pro";
+        default = "Inter";
         description = ''
           System UI font family name. Documented as greeter-only requirement:
           noctalia-greeter runs pre-login as the `greeter` user before Home
@@ -23,10 +23,9 @@ in
       };
       package = lib.mkOption {
         type = lib.types.package;
-        default = pkgs.sf-pro;
+        default = pkgs.inter;
         description = ''
-          Package providing the system UI font. Apple SF Pro from the
-          apple-fonts flake (requires the host's appleFontsOverlay).
+          Package providing the system UI font for the pre-login greeter.
         '';
       };
     };

@@ -9,12 +9,9 @@ let
   system = "x86_64-linux";
 
   # Merge global + host-specific overlays.
-  # appleFontsOverlay adds pkgs.sf-pro / pkgs.sf-mono (Apple SF fonts from
-  # the apple-fonts flake) for the system font stack and Home Manager.
   overlays =
     (import ../../overlays/core.nix)
-    ++ (import ./overlays.nix)
-    ++ [ lib.appleFontsOverlay ];
+    ++ (import ./overlays.nix);
 
   # Build stable + unstable package channels
   # Unfree policy is owned by this host (gaming/firmware aspects need it).

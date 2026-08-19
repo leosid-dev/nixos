@@ -60,15 +60,14 @@
     accent = "monochrome";
     mode = "dark";
 
-    # Explicit font persona: Apple SF Pro for UI, SF Mono for code.
-    # Packages come from the apple-fonts flake overlay (pkgs.sf-pro /
-    # pkgs.sf-mono); the profile owns the choice, modules only default.
+    # Explicit font persona: Inter for graphical interfaces and JetBrains
+    # Mono for terminal and code applications.
     font = {
-      name = "SF Pro";
-      package = pkgs.sf-pro;
+      name = "Inter";
+      package = pkgs.inter;
       monospace = {
-        name = "SF Mono";
-        package = pkgs.sf-mono;
+        name = "JetBrains Mono";
+        package = pkgs.jetbrains-mono;
       };
     };
   };
