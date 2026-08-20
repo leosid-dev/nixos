@@ -23,7 +23,7 @@ in
       syntaxHighlighting.enable = true;
 
       # Keep successive command blocks visually separated in long sessions.
-      initExtra = ''
+      initContent = ''
         precmd() { print }
       '';
 

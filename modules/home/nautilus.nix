@@ -1,7 +1,7 @@
 # modules/home/nautilus.nix — Nautilus file manager & Sushi previewer (HM-level).
 #
-# Provides: GNOME Files (Nautilus), Sushi (Spacebar Quick Look preview),
-# thumbnailers, MIME associations, and dconf defaults.
+# Provides: GNOME Files (Nautilus), thumbnailers, MIME associations, and dconf
+# defaults.
 # Gated by aspects.home.nautilus.enable.
 { config, lib, pkgs, ... }:
 let
@@ -36,7 +36,6 @@ in
 
     home.packages = with pkgs; [
       nautilus
-      sushi
       ffmpegthumbnailer
       webp-pixbuf-loader
     ];

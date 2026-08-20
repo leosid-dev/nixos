@@ -1,15 +1,30 @@
 # modules/system/desktop/portals.nix — XDG Desktop Portal additions.
 #
-# The nixpkgs niri module already wires the gnome portal, per-interface niri
-# routing (Access/FileChooser/Notification/Secret) and gnome-keyring. We only
-# add the GTK portal as a general fallback here.
+# Standard Niri portal stack:
+# - GNOME portal handles ScreenCast, Screenshot, RemoteDesktop, Access.
+# - GTK portal handles FileChooser, AppChooser, Print.
+# - Secrets route to gnome-keyring.
 { lib, config, pkgs, ... }:
 {
   config = lib.mkIf config.aspects.desktop.enable {
     xdg.portal = {
       enable = true;
-      extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
-      config.common.default = "gtk";
+      extraPortals = with pkgs; [
+        xdg-desktop-portal-gtk
+        xdg-desktop-portal-gnome
+      ];
+      config = {
+        niri = {
+          default = [ "gnome" "gtk" ];
+          "org.freedesktop.impl.portal.FileChooser" = [ "gtk" ];
+          "org.freedesktop.impl.portal.AppChooser" = [ "gtk" ];
+          "org.freedesktop.impl.portal.Print" = [ "gtk" ];
+          "org.freedesktop.impl.portal.Secret" = [ "gnome-keyring" ];
+        };
+        common = {
+          default = [ "gtk" ];
+        };
+      };
     };
 
     # dconf backend — required for Home Manager `dconf.settings` writes

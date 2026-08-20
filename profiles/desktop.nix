@@ -23,6 +23,8 @@
     ../modules/home/shell.nix
     ../modules/home/editor.nix
     ../modules/home/git.nix
+    ../modules/home/packages.nix
+    ../modules/home/nautilus.nix
     ../modules/home/niri.nix
     ../modules/home/wayland.nix
     ../modules/home/terminal.nix
@@ -33,6 +35,7 @@
   ];
 
   aspects.home = {
+    nautilus.enable = true;
     terminal.enable = true;
     theme.enable = true;
     noctalia.enable = true;

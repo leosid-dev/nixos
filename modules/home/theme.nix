@@ -193,10 +193,10 @@ in
 
     gtk = {
       enable = true;
-      # Adwaita is the only GTK theme installed; the accent palette drives
-      # Noctalia/Kitty/Neovim, not the GTK theme name.
+      # Use the dark variant of Adwaita in dark mode so GTK3 applications
+      # and portals correctly pick up dark styles.
       theme = {
-        name = "Adwaita";
+        name = if theme.mode == "dark" then "Adwaita-dark" else "Adwaita";
         package = pkgs.gnome-themes-extra;
       };
       iconTheme = {
@@ -218,7 +218,6 @@ in
     qt = {
       enable = true;
       platformTheme.name = "gtk3";
-      style.name = "Fusion";
     };
 
     home.pointerCursor = {
@@ -230,7 +229,7 @@ in
 
     dconf.settings."org/gnome/desktop/interface" = {
       color-scheme = if theme.mode == "dark" then "prefer-dark" else "prefer-light";
-      gtk-theme = "Adwaita";
+      gtk-theme = if theme.mode == "dark" then "Adwaita-dark" else "Adwaita";
       icon-theme = "Adwaita";
       cursor-theme = theme.cursor.name;
       cursor-size = theme.cursor.size;

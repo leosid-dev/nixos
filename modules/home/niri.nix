@@ -238,6 +238,7 @@ binds {
 
     ${lib.optionalString (cfg.terminalCommand != null)
       ''Mod+Return hotkey-overlay-title="Open Terminal" { spawn "${cfg.terminalCommand}"; }''}
+    Mod+E repeat=false hotkey-overlay-title="Open File Manager" { spawn "nautilus" "--new-window"; }
     Mod+O repeat=false { toggle-overview; }
     Mod+D repeat=false hotkey-overlay-title="Open Launcher" { spawn "noctalia" "msg" "panel-toggle" "launcher"; }
     Mod+S repeat=false hotkey-overlay-title="Open Control Center" { spawn "noctalia" "msg" "panel-toggle" "control-center"; }

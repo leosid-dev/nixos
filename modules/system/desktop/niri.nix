@@ -13,6 +13,7 @@
 
     # D-Bus is required for Wayland compositors
     services.dbus.enable = true;
+    services.gvfs.enable = true;
 
     # Toolkit defaults are useful in graphical and terminal sessions alike.
     # Session identity variables are deliberately left to the graphical
