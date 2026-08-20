@@ -22,6 +22,11 @@ in
       autosuggestion.enable = true;
       syntaxHighlighting.enable = true;
 
+      # Keep successive command blocks visually separated in long sessions.
+      initExtra = ''
+        precmd() { print }
+      '';
+
       history = {
         size = 10000;
         save = 10000;

@@ -34,7 +34,12 @@ in
       enable = true;
       remotePlay.openFirewall = cfg.remotePlay.enable;
       dedicatedServer.openFirewall = cfg.dedicatedServer.enable;
-      gamescopeSession.enable = true;
+      gamescopeSession = {
+        enable = true;
+        # The greeter-launched DRM session already has systemd-logind. Avoid
+        # probing for an unused seatd socket before falling back to logind.
+        env.LIBSEAT_BACKEND = "logind";
+      };
     };
 
     # Feral GameMode for CPU/GPU performance optimization during gameplay.

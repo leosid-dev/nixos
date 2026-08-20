@@ -9,32 +9,36 @@
 {
   monochrome = {
     dark = {
-      # Material roles for Noctalia v5 (m* schema)
+      # Material roles for Noctalia v5 (m* schema).
+      # The runtime maps hover = tertiary (mapGeneratedPaletteMode), so
+      # mTertiary doubles as the hover fill; mOutline is chosen >= 3:1
+      # against the surface so Noctalia's ensureContrast leaves it alone.
       mPrimary = "#e6e6e6";
       mOnPrimary = "#000000";
-      mSecondary = "#b3b3b3";
+      mSecondary = "#c4c4c4";
       mOnSecondary = "#000000";
-      mTertiary = "#8c8c8c";
-      mOnTertiary = "#000000";
-      mError = "#e6e6e6";
+      mTertiary = "#262626";
+      mOnTertiary = "#e6e6e6";
+      # Error is the brightest achromatic step so destructive states stay
+      # distinguishable from primary without introducing hue.
+      mError = "#f5f5f5";
       mOnError = "#000000";
       mSurface = "#000000";
       mOnSurface = "#e6e6e6";
       mSurfaceVariant = "#141414";
       mOnSurfaceVariant = "#a3a3a3";
-      mOutline = "#3d3d3d";
+      mOutline = "#5c5c5c";
       mShadow = "#000000";
-      mHover = "#1f1f1f";
-      mOnHover = "#e6e6e6";
 
       # Focus ring for Niri
       focus = {
         active = "#e6e6e6";
-        inactive = "#808080";
+        inactive = "#3d3d3d";
         background = "#000000";
       };
 
-      # Terminal colors for Kitty + Noctalia
+      # Terminal colors for Kitty + Noctalia. ANSI ladders are strictly
+      # monotonic: every bright value outshines its normal counterpart.
       terminal = {
         foreground = "#e6e6e6";
         background = "#000000";
@@ -43,22 +47,22 @@
         selectionFg = "#000000";
         selectionBg = "#a3a3a3";
         normal = {
-          black = "#000000";
+          black = "#1a1a1a";
           red = "#8c8c8c";
-          green = "#999999";
-          yellow = "#a3a3a3";
-          blue = "#adadad";
-          magenta = "#b3b3b3";
-          cyan = "#bdbdbd";
+          green = "#959595";
+          yellow = "#9e9e9e";
+          blue = "#a7a7a7";
+          magenta = "#b0b0b0";
+          cyan = "#b9b9b9";
           white = "#e6e6e6";
         };
         bright = {
-          black = "#3d3d3d";
-          red = "#999999";
-          green = "#a3a3a3";
-          yellow = "#b3b3b3";
-          blue = "#bdbdbd";
-          magenta = "#c4c4c4";
+          black = "#5c5c5c";
+          red = "#a9a9a9";
+          green = "#b2b2b2";
+          yellow = "#bbbbbb";
+          blue = "#c4c4c4";
+          magenta = "#cdcdcd";
           cyan = "#d6d6d6";
           white = "#f5f5f5";
         };
@@ -74,35 +78,38 @@
         base05 = "#b3b3b3";
         base06 = "#d6d6d6";
         base07 = "#f5f5f5";
-        base08 = "#e6e6e6";
-        base09 = "#c4c4c4";
-        base0A = "#bdbdbd";
-        base0B = "#adadad";
-        base0C = "#a3a3a3";
-        base0D = "#999999";
-        base0E = "#8c8c8c";
-        base0F = "#7a7a7a";
+        base08 = "#e0e0e0";
+        base09 = "#d0d0d0";
+        base0A = "#c4c4c4";
+        base0B = "#b8b8b8";
+        base0C = "#acacac";
+        base0D = "#a0a0a0";
+        base0E = "#949494";
+        base0F = "#888888";
       };
 
       opacity = 1.0;
     };
     light = {
+      # mTertiary doubles as the hover fill at runtime — kept near the
+      # surface ladder, with dark on-colour for legibility on it.
       mPrimary = "#1a1a1a";
       mOnPrimary = "#ffffff";
       mSecondary = "#525252";
       mOnSecondary = "#ffffff";
-      mTertiary = "#737373";
-      mOnTertiary = "#ffffff";
-      mError = "#b3261e";
+      mTertiary = "#e4e4e4";
+      mOnTertiary = "#1a1a1a";
+      # Darkest achromatic step mirrors the dark-mode "extreme neutral"
+      # convention instead of breaking monochrome with red.
+      mError = "#0a0a0a";
       mOnError = "#ffffff";
       mSurface = "#ffffff";
       mOnSurface = "#1a1a1a";
       mSurfaceVariant = "#f0f0f0";
       mOnSurfaceVariant = "#525252";
-      mOutline = "#c4c4c4";
+      # >= 3:1 against the surface so ensureContrast keeps it stable.
+      mOutline = "#949494";
       mShadow = "#e0e0e0";
-      mHover = "#e6e6e6";
-      mOnHover = "#1a1a1a";
 
       focus = {
         active = "#1a1a1a";
@@ -110,6 +117,8 @@
         background = "#ffffff";
       };
 
+      # Light-terminal ladder: brighter values recede, darker values carry
+      # weight; bright variants emphasise over their normal counterparts.
       terminal = {
         foreground = "#1a1a1a";
         background = "#ffffff";
@@ -118,23 +127,23 @@
         selectionFg = "#ffffff";
         selectionBg = "#525252";
         normal = {
-          black = "#ffffff";
-          red = "#737373";
-          green = "#666666";
-          yellow = "#525252";
-          blue = "#4d4d4d";
-          magenta = "#474747";
-          cyan = "#404040";
-          white = "#1a1a1a";
+          black = "#1a1a1a";
+          red = "#474747";
+          green = "#4e4e4e";
+          yellow = "#555555";
+          blue = "#5c5c5c";
+          magenta = "#636363";
+          cyan = "#6a6a6a";
+          white = "#7a7a7a";
         };
         bright = {
-          black = "#c4c4c4";
-          red = "#666666";
-          green = "#525252";
-          yellow = "#474747";
-          blue = "#404040";
-          magenta = "#383838";
-          cyan = "#2e2e2e";
+          black = "#8a8a8a";
+          red = "#2e2e2e";
+          green = "#353535";
+          yellow = "#3c3c3c";
+          blue = "#434343";
+          magenta = "#4a4a4a";
+          cyan = "#515151";
           white = "#0a0a0a";
         };
       };
@@ -148,14 +157,14 @@
         base05 = "#525252";
         base06 = "#2e2e2e";
         base07 = "#1a1a1a";
-        base08 = "#737373";
-        base09 = "#666666";
-        base0A = "#525252";
-        base0B = "#4d4d4d";
-        base0C = "#404040";
-        base0D = "#383838";
-        base0E = "#2e2e2e";
-        base0F = "#1a1a1a";
+        base08 = "#686868";
+        base09 = "#606060";
+        base0A = "#585858";
+        base0B = "#505050";
+        base0C = "#484848";
+        base0D = "#404040";
+        base0E = "#383838";
+        base0F = "#303030";
       };
 
       opacity = 1.0;

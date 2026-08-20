@@ -42,6 +42,9 @@ let
       };
 
   # Extract Noctalia v5 custom palette schema (m* Material roles + terminal)
+  # from lib/palettes.nix. mHover/mOnHover are omitted on purpose: the runtime
+  # hardcodes hover = tertiary (mapGeneratedPaletteMode), so shipping them
+  # would be dead configuration.
   extractNoctalia = p: {
     inherit (p)
       mPrimary
@@ -58,8 +61,6 @@ let
       mOnSurfaceVariant
       mOutline
       mShadow
-      mHover
-      mOnHover
       terminal
       ;
   };
@@ -86,6 +87,10 @@ in
       customPalettes.monochrome = monochromePalette;
 
       settings = {
+        accessibility = {
+          ui_scale = 1.15;
+        };
+
         shell = {
           # Font follows aspects.theme.font (single source of truth).
           font_family = theme.font.name;
@@ -94,11 +99,26 @@ in
           # and placed per shell.panel.polkit_placement.
           polkit_agent = true;
           panel = {
-            borders = true;
-            shadow = false; # flat, macOS-style panels
-            # App launcher floats at the top-center of the screen.
-            launcher_placement = "floating";
-            launcher_position = "top_center";
+            transparency_mode = "solid"; # solid | soft | glass; controls floating panel opacity and card translucency
+            borders = false; # outline on floating panel surfaces
+            shadow = false; # cast the global [shell.shadow] from panel surfaces
+            list_item_background = false; # filled rounded background behind launcher and clipboard list items
+            floating_layer = "overlay"; # overlay | top; applies to floating interactive panels
+            launcher_placement = "attached"; # attached | floating
+            clipboard_placement = "attached"; # attached | floating
+            control_center_placement = "attached"; # attached | floating
+            wallpaper_placement = "attached"; # attached | floating
+            session_placement = "floating"; # attached | floating
+            polkit_placement = "floating"; # attached | floating
+            #launcher_position = "center"; # auto | center | top_left | … (floating only)
+            #clipboard_position = "auto"; # auto | center | top_left | … (floating only)
+            polkit_position = "center"; # auto | center | top_left | … (floating only)
+            floating_offset = 8; # px gap between a floating panel and the bar edge
+            open_near_click_control_center = true; # attached/floating: follow the bar click instead of bar-center
+            open_near_click_launcher = false; # attached/floating: follow the bar click instead of bar-center
+            open_near_click_clipboard = false; # attached/floating: follow the bar click instead of bar-center
+            open_near_click_wallpaper = false; # attached/floating: follow the bar click instead of bar-center
+            open_near_click_session = false; # attached/floating: follow the bar click instead of bar-center
           };
           animation = {
             enabled = true;
@@ -114,9 +134,10 @@ in
         # macOS-style bar: flat, flush, three lanes replicating macOS HIG.
         bar.main = {
           position = "top";
-          thickness = 32;
+          thickness = 34;
+          scale = 1.15;
           padding = 12;
-          widget_spacing = 8;
+          widget_spacing = 14;
           radius = 0;
           margin_ends = 0;
           margin_edge = 0;
@@ -125,6 +146,9 @@ in
           shadow = false;
           capsule = false;
           reserve_space = true;
+          font_weight = 500;
+          font_family = theme.font.name;
+
           start = [
             "workspaces"
             "active_window"
@@ -153,13 +177,13 @@ in
         };
 
         control_center = {
-          sidebar = "compact";
-          sidebar_section = "compact";
+          sidebar = "none";
+          sidebar_section = "none";
           show_shortcut_labels = false;
         };
 
         widget.workspaces = {
-          style = "regular";
+          style = "minimal";
           show_labels = false;
           focused_color = "primary";
           occupied_color = "secondary";
@@ -186,12 +210,13 @@ in
         };
         widget.tray = {
           hide_passive = true;
-          drawer = false;
+          drawer = true;
         };
         widget.privacy = {
           hide_inactive = true;
         };
         widget.network = {
+          scale = 1.1;
           show_label = false;
           vpn_status = "replace";
         };
@@ -203,9 +228,10 @@ in
           show_label = false;
         };
         widget.battery = {
-          display_mode = "graphic";
-          show_label = true;
-          label_content = "percent";
+          scale = 1.1;
+          display_mode = "glyph";
+          show_label = false;
+          label_content = "rate";
           hide_when_full = false;
           hide_when_plugged = false;
         };
