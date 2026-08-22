@@ -117,8 +117,8 @@ mkfs.ext4 -L media  /dev/nvme1n1p2
 
 Both are ext4 with `noatime` (declared in `hosts/thinkbook/hardware.nix`).
 The VM partition mounts at `/var/lib/libvirt` — housing both sparse disk
-images (`/var/lib/libvirt/images`) and dedicated virtiofs guest homes
-(`/var/lib/libvirt/homes`). The media partition mounts at `/home/sid/media`
+images (`/var/lib/libvirt/images`) and dedicated virtiofs data shares
+(`/var/lib/libvirt/shares`). The media partition mounts at `/home/sid/media`
 (add a Steam library folder inside it later).
 
 ### 3d. Mount everything

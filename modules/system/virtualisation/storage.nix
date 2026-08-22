@@ -19,6 +19,12 @@ let
       shift
     fi
 
+    if [ "''${1:-}" = "--help" ] || [ "''${1:-}" = "-h" ]; then
+      echo "usage: virt-disk [--raw] <name> <size e.g. 64G>" >&2
+      echo "  --raw   create raw image (default: qcow2 sparse)" >&2
+      exit 0
+    fi
+
     if [ $# -ne 2 ]; then
       echo "usage: virt-disk [--raw] <name> <size e.g. 64G>" >&2
       exit 1
@@ -27,9 +33,10 @@ let
     name="$1"
     size="$2"
 
-    # Validate name (alphanumeric, dot, underscore, dash)
-    if ! echo "$name" | grep -Eq '^[a-zA-Z0-9._-]+$'; then
-      echo "error: invalid image name '$name'. Use only [a-zA-Z0-9._-]." >&2
+    # Validate name: must start with alphanumeric, then alnum/dot/underscore/dash
+    # Rejects leading dot/dash and bare ".." traversal.
+    if ! echo "$name" | grep -Eq '^[a-zA-Z0-9][a-zA-Z0-9._-]*$'; then
+      echo "error: invalid image name '$name'. Use only [a-zA-Z0-9._-], starting with alphanumeric." >&2
       exit 1
     fi
 
@@ -58,7 +65,7 @@ let
   '';
 in
 {
-  config = lib.mkIf cfg.enable {
-    environment.systemPackages = [ virt-disk ];
+  config = lib.mkIf (cfg.enable && cfg.diskTool.enable) {
+    environment.systemPackages = [ pkgs.qemu-utils virt-disk ];
   };
 }

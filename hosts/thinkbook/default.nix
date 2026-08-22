@@ -62,17 +62,18 @@ lib.mkHost {
         secrets.enable = true;
         secrets.sshKeyPaths = ["/etc/ssh/thinkbook_ed25519"];
 
-        # KVM/QEMU work VMs (Ubuntu LTS).
-        # Dedicated host-backed virtiofs home on the vmdata partition:
-        # /var/lib/libvirt/homes/ubuntu -> mounted at /home/sid inside guest.
+        # KVM/QEMU work VMs (Ubuntu LTS) with a dedicated host-backed data share.
         virtualisation = {
           enable = true;
-          guests.ubuntu = {
-            hostPath = "/var/lib/libvirt/homes/ubuntu";
-            target = "/home/sid";
-            uid = 1000;
-            gid = 1000;
-            hostLink = "/home/sid/VMs/ubuntu";
+          virtManager.enable = true;
+          diskTool.enable = true;
+          virtiofs = {
+            enable = true;
+            shares.ubuntu = {
+              hostPath = "/var/lib/libvirt/shares/ubuntu";
+              uid = 1000;
+              gid = 1000;
+            };
           };
         };
 

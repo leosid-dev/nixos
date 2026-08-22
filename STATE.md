@@ -167,7 +167,7 @@ nixos/
 | CPU | AMD Ryzen 7 7735HS (Rembrandt, Zen 3+, 8C/16T) |
 | GPU | AMD Radeon 680M (RDNA2 iGPU, integrated) |
 | RAM | 16 GB DDR5 |
-| Storage | `nvme0n1` Micron: ESP "boot" (2 GiB) + swap (8 GiB) + root "nixos" (plain ext4 without LUKS — accepted design); `nvme1n1` KIOXIA: "vmdata" (150 GiB → `/var/lib/libvirt` for images + guest homes) + "media" (rest → `/home/sid/media`). Label-based refs; layout created by WALKTHROUGH.md |
+| Storage | `nvme0n1` Micron: ESP "boot" (2 GiB) + swap (8 GiB) + root "nixos" (plain ext4 without LUKS — accepted design); `nvme1n1` KIOXIA: "vmdata" (150 GiB → `/var/lib/libvirt` for images + virtiofs data shares) + "media" (rest → `/home/sid/media`). Label-based refs; layout created by WALKTHROUGH.md |
 | WiFi | MediaTek MT7921e (`14c3:0616`, `disable_aspm`) |
 | Bluetooth | Foxconn MediaTek (btusb), Noctalia control-center Bluetooth service (Blueman applet removed) |
 | Audio | Realtek ALC257 (HDA) — no smart amps; DSP via EasyEffects profile preset |
@@ -184,7 +184,7 @@ nixos/
 | File Editor | Neovim via nixvim (nixd LSP, sets EDITOR/VISUAL) | flake input |
 | LLM Agents | opencode + grok via numtide/llm-agents.nix | flake input (own unstable pin, numtide cache) |
 | Gaming Stack | Steam + GameMode + Wine + MangoHud + Bottles | stable |
-| Virtualisation | KVM/QEMU (libvirt + virt-manager), dedicated guest home via virtiofs, virtio-gpu + Venus | stable |
+| Virtualisation | KVM/QEMU (libvirt + virt-manager), host-backed virtiofs data share, virtio-gpu + Venus | stable |
 | Privilege prompts | Noctalia's native polkit agent (`shell.polkit_agent`) | flake input |
 | Audio | PipeWire + EasyEffects DSP | stable |
 | Shell | Zsh (with autosuggestions & syntax highlighting) | stable |
@@ -228,10 +228,10 @@ nixos/
 7. **LLM agents:** `opencode --version && grok --version`; auth is
    imperative (`opencode auth login`, grok login) — nothing declarative.
 8. **Virtualisation:** `systemctl status libvirtd && virsh version`, then
-   follow `assets/virt/README.md`: `virt-disk ubuntu 64G`, create the
-   Ubuntu VM (UEFI, virtio-blk tuned, virtiofs share from `/var/lib/libvirt/homes/ubuntu`),
-   run `cat /etc/virtfs/ubuntu/setup-guest.sh | ssh guest 'sudo sh -s'`, verify the shared home and
-   `vulkaninfo` (Venus).
+   follow `assets/virt/README.md`: `virt-disk ubuntu 64G`, activate the
+   default libvirt network, create the Ubuntu VM (UEFI, virtio-blk tuned),
+   add the virtiofs data share from `/var/lib/libvirt/shares/ubuntu`, and
+   verify the guest mount and `vulkaninfo` (Venus).
 9. **Visual:** `niri validate` against the generated config, then check
    the bezier overshoot/settle, radius-4 corners, grayscale focus ring on
    true-black background, and the flat macOS-style bar: workspaces + taskbar

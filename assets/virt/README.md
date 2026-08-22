@@ -1,118 +1,249 @@
-# Virtualisation runbook — KVM/QEMU + virtiofs home sharing
+# Virtualisation runbook - KVM/QEMU and virtiofs data sharing
 
 Operator notes for the `aspects.virtualisation` aspect
-(`modules/system/virtualisation/`). Everything here is imperative by
-nature (VMs are libvirt state, not Nix state); the module provides the
-platform, tuned defaults, and reviewed integration artifacts.
+(`modules/system/virtualisation/`). NixOS manages the host platform and
+share directories. VM definitions, libvirt networks, and guest mount units
+remain mutable operator-managed state.
 
-Target: Ubuntu 22.04/24.04 LTS work VMs on the ThinkBook (Ryzen 7 7735HS,
-Radeon 680M iGPU, 16 GB), with a dedicated host-backed home directory at
-`/var/lib/libvirt/homes/ubuntu` (on the `vmdata` partition) mounted inside
-the guest at `/home/sid`, and linked on the host at `/home/sid/VMs/ubuntu`.
+The ThinkBook configuration provides an Ubuntu work VM with:
 
-## Quick spin of the NixOS ISO
+- VM images under `/var/lib/libvirt/images/`
+- A host-backed data share at `/var/lib/libvirt/shares/ubuntu`
+- The same share mounted inside the guest at `/mnt/ubuntu-share`
+- The virtiofs tag `ubuntu_share`
 
-`assets/virt/run-nixos-iso.sh` boots an ISO in a throwaway KVM guest —
-no libvirt involved. Works on any KVM host (Ubuntu 22.04, NixOS, ...);
-it probes the QEMU binary for slirp/display support and fails with
-actionable hints instead of cryptic errors.
+The share is intentionally not the guest home directory. Keep guest dotfiles,
+caches, locks, and machine-specific state on the guest filesystem.
 
-```bash
-./assets/virt/run-nixos-iso.sh ./nixos.iso
-```
+## 1. Apply the Host Configuration
 
-- Host prerequisites (Ubuntu 22.04):
-  `sudo apt install qemu-system-x86 qemu-utils ovmf` and KVM access
-  (`sudo usermod -aG kvm $USER`, then re-login). The distro QEMU build
-  includes slirp, so user-mode networking works out of the box.
-- Defaults: 4 vCPUs (host model), 4 GiB RAM, 32 GiB scratch disk
-  (`~/.cache/nixos-vm/nixos-vm.qcow2`, auto-created with metadata preallocation;
-  delete it for a fresh start). Override with `CPUS=8 MEM=8G DISK_SIZE=64G`,
-  `DISK=/path/to/disk.qcow2`, or `QEMU=` to point at a specific
-  `qemu-system-x86_64` binary.
-- Networking is outbound-only user-mode: slirp (`-netdev user`) when the
-  QEMU build includes it, else `passt` (ships with newer builds). Either
-  way, outbound works (git clone / `nix flake` fetch inside the guest),
-  inbound does not.
-- Boots UEFI via OVMF when present (`/usr/share/OVMF/` on Ubuntu,
-  `/run/libvirt/nix-ovmf/` on NixOS), falling back to SeaBIOS.
-- To boot from the installed disk afterwards, drop the `-cdrom` line in
-  the script (or change `-boot order=d` to `order=c`).
-
-## What the aspect gives you
-
-| Piece | Detail |
-|---|---|
-| libvirtd | root-mode QEMU, `onShutdown = "shutdown"` (clean ACPI stop of guests) |
-| QEMU | `qemu_kvm` (host-arch only, virgl/Venus 3D built in); OVMF UEFI firmware auto-listed from `/run/libvirt/nix-ovmf/` |
-| virtiofsd | Rust vhost-user backend, auto-discovered via `/var/lib/qemu/vhost-user/` |
-| virt-manager | GUI for VM lifecycle |
-| swtpm | optional emulated TPM 2.0 (gated via `aspects.virtualisation.swtpm.enable`, default off) |
-| SPICE USB redirection | optional USB passthrough (gated via `aspects.virtualisation.spiceUsbRedirection.enable`, default off) |
-| KSM | optional memory deduplication (gated via `aspects.virtualisation.ksm.enable`, default off on laptops) |
-| `virt-disk` | creates sparse qcow2 or raw guest disks (validates name & size arguments) |
-| `/etc/virtfs/<guest>/` | reviewed XML fragments (`share.xml`, `memory-backing.xml`) & portable guest setup script (`setup-guest.sh`) |
-
-## 1. Create the guest disk (sparse + resizable)
+The host enables libvirt, QEMU, virtiofsd, and virt-manager through
+`hosts/thinkbook/default.nix`:
 
 ```bash
-virt-disk ubuntu 64G          # qcow2, preallocation=metadata, cluster_size=64k
-virt-disk --raw ubuntu 64G    # alternative: raw (zero overhead, no snapshots)
+sudo nixos-rebuild switch --flake /home/sid/nixos#thinkbook
 ```
 
-- `preallocation=metadata` allocates cluster metadata up front while
-  preserving sparse growth — guest images only consume host disk space as
-  data is written.
-- Resize later (online with virtio-blk):
-  `sudo qemu-img resize /var/lib/libvirt/images/ubuntu.qcow2 +16G`,
-  then inside the guest: `sudo resize2fs /dev/vda1`.
-- `fstrim -av` inside the guest returns freed space to the host file
-  (requires `discard='unmap'` below).
+Verify the platform and data filesystem:
 
-## 2. Create the VM (virt-manager)
+```bash
+systemctl status libvirtd
+virsh version
+findmnt /var/lib/libvirt
+```
 
-1. New VM → install from the Ubuntu LTS ISO.
-2. Firmware: **UEFI** (auto-listed from `/run/libvirt/nix-ovmf/`).
-3. Disk: attach the image created above as **virtio-blk**.
-4. Network: default NAT (`virbr0`) is fine; guest gets internet out of the box.
-5. CPU: set model to **host-passthrough** (Copy host CPU configuration).
+The host creates the share directory declaratively:
 
-Then edit the XML (`virsh edit ubuntu` or virt-manager → XML) for the
-block-layer tuning:
+```bash
+ls -ld /var/lib/libvirt/shares/ubuntu
+```
+
+The directory is owned by UID/GID `1000:1000` and is not recursively
+rewritten during later activations.
+
+## 2. Activate the Default Libvirt Network
+
+The default NAT network is libvirt state, not a NixOS domain definition. Check
+its status:
+
+```bash
+sudo virsh net-list --all
+```
+
+Start and persist it if necessary:
+
+```bash
+sudo virsh net-start default
+sudo virsh net-autostart default
+```
+
+The guest should use the default NAT network, normally exposed as `virbr0`.
+Verify guest connectivity after the VM is running:
+
+```bash
+ip addr
+ip route
+ping -c 3 1.1.1.1
+```
+
+## 3. Create the Guest Disk
+
+`virt-disk` is a convenience wrapper around `qemu-img`:
+
+```bash
+virt-disk ubuntu 64G
+```
+
+This creates a sparse qcow2 image with metadata preallocation:
+
+```text
+/var/lib/libvirt/images/ubuntu.qcow2
+```
+
+For a raw image instead:
+
+```bash
+virt-disk --raw ubuntu 64G
+```
+
+This creates `/var/lib/libvirt/images/ubuntu.raw`. Raw images do not provide
+qcow2 internal snapshots; external/libvirt snapshot support depends on the
+storage and snapshot mode.
+
+The helper refuses invalid names and existing images:
+
+```bash
+virt-disk --help
+```
+
+## 4. Create the VM
+
+Open virt-manager:
+
+```bash
+virt-manager
+```
+
+Create a VM from the Ubuntu 22.04 or 24.04 ISO:
+
+1. Select UEFI firmware when available.
+2. Attach the qcow2 or raw image from `/var/lib/libvirt/images/`.
+3. Use a virtio disk bus.
+4. Attach the default NAT network.
+5. Use `host-passthrough` CPU mode when the VM will remain on this host.
+6. Enable virtio-gpu 3D acceleration if using a graphical guest.
+
+For the qcow2 image, the optional disk tuning is:
 
 ```xml
 <disk type="file" device="disk">
-  <driver name="qemu" type="qcow2" cache="none" io="native" discard="unmap"/>
+  <driver name="qemu" type="qcow2"
+          cache="none" io="native" discard="unmap"/>
   <source file="/var/lib/libvirt/images/ubuntu.qcow2"/>
   <target dev="vda" bus="virtio"/>
   <iothread>1</iothread>
 </disk>
 ```
 
-and declare the iothread:
+Declare the thread at domain level:
 
 ```xml
 <iothreads>1</iothreads>
 ```
 
-## 3. Dedicated guest home via virtiofs
+For the raw image, change the driver type and source path:
 
-The module generates reviewed XML fragments for each guest defined in
-`aspects.virtualisation.guests.<name>` under `/etc/virtfs/<name>/`.
+```xml
+<driver name="qemu" type="raw"
+        cache="none" io="native" discard="unmap"/>
+<source file="/var/lib/libvirt/images/ubuntu.raw"/>
+```
 
-Add the filesystem share into the VM's `<devices>` section (from
-`/etc/virtfs/ubuntu/share.xml`):
+Edit persistent domain XML with:
+
+```bash
+virsh edit ubuntu
+```
+
+## 5. Add the Virtiofs Data Share
+
+The host generates the reviewed share fragment from the configured
+`virtiofs.shares.ubuntu` definition:
+
+```bash
+cat /etc/virtfs/ubuntu/share.xml
+```
+
+Add its `<filesystem>` element inside the VM's `<devices>` section:
 
 ```xml
 <filesystem type="mount" accessmode="passthrough">
   <driver type="virtiofs" queue="1024"/>
-  <source dir="/var/lib/libvirt/homes/ubuntu"/>
-  <target dir="home_share"/>
+  <source dir="/var/lib/libvirt/shares/ubuntu"/>
+  <target dir="ubuntu_share"/>
 </filesystem>
 ```
 
-Add the shared memory backing directly under `<domain>` (from
-`/etc/virtfs/ubuntu/memory-backing.xml`):
+The tag is generated as `<share-name>_share`. It must match the `What=` value
+in the guest mount unit. The host path and guest target are independent:
+
+```text
+Host:  /var/lib/libvirt/shares/ubuntu
+Guest: /mnt/ubuntu-share
+Tag:   ubuntu_share
+```
+
+Virtiofs contents are not included in libvirt VM snapshots. Back up the host
+share independently from the guest disk.
+
+## 6. Configure the Guest Mount
+
+Install Ubuntu normally and create the intended guest user during installation.
+No host-side script changes guest users or their UID/GID. The share directory
+is owned by `1000:1000`, so the guest account that uses the share should have
+matching numeric IDs.
+
+Inside the guest, create the mount unit as root:
+
+```bash
+sudo systemd-escape -p --suffix=mount /mnt/ubuntu-share
+```
+
+Use the resulting unit name when creating
+`/etc/systemd/system/<unit-name>.mount`:
+
+```ini
+[Unit]
+Description=Ubuntu virtiofs data share
+Before=systemd-user-sessions.service multi-user.target
+
+[Mount]
+What=ubuntu_share
+Where=/mnt/ubuntu-share
+Type=virtiofs
+Options=defaults,noatime
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable it:
+
+```bash
+sudo mkdir -p /mnt/ubuntu-share
+sudo systemctl daemon-reload
+sudo systemctl enable --now <unit-name>.mount
+```
+
+Verify the mount:
+
+```bash
+findmnt /mnt/ubuntu-share
+```
+
+Test both directions:
+
+```bash
+touch /mnt/ubuntu-share/guest-test
+```
+
+On the host:
+
+```bash
+ls -l /var/lib/libvirt/shares/ubuntu/guest-test
+```
+
+## 7. Optional Shared Memory Backing
+
+The host also generates a memory-backing reference:
+
+```bash
+cat /etc/virtfs/ubuntu/memory-backing.xml
+```
+
+If the domain needs shared memfd backing for virtiofs DAX, merge it into the
+domain's existing `<memoryBacking>` element. Do not add a second
+`<memoryBacking>` element:
 
 ```xml
 <memoryBacking>
@@ -121,81 +252,91 @@ Add the shared memory backing directly under `<domain>` (from
 </memoryBacking>
 ```
 
-virtiofs provides coherent, inotify-compatible, file-locking shared storage
-backed by the host's `vmdata` partition at `/var/lib/libvirt/homes/ubuntu`.
+## 8. Optional GPU Acceleration
 
-> **Important:** Libvirt VM snapshots do **NOT** include virtiofs contents.
-> Back up `/var/lib/libvirt/homes/ubuntu` independently from the guest image.
+The Radeon 680M is the host's integrated GPU and should not be detached with
+VFIO. Use virtio-gpu with 3D acceleration for the guest.
 
-## 4. Inside the guest (after Ubuntu install)
-
-Run the portable guest setup script generated by NixOS under
-`/etc/virtfs/ubuntu/setup-guest.sh`:
+Ubuntu 24.04 can use Venus when its Mesa stack supports it:
 
 ```bash
-# Pipe from host to guest over SSH:
-cat /etc/virtfs/ubuntu/setup-guest.sh | ssh ubuntu@<vm-ip> 'sudo sh -s'
+sudo apt install vulkan-tools
+vulkaninfo | grep -i venus
 ```
 
-The script:
-- Installs and enables `/etc/systemd/system/home-sid.mount` mounting `home_share` at `/home/sid`.
-- Aligns the guest user's UID/GID to `1000:1000`.
-- Requires only standard POSIX `/bin/sh` and systemd (no Nix-store dependencies).
+VFIO is intended for a separate device, such as an eGPU, dedicated USB
+controller, or dedicated NIC. Enable the host option first:
 
-## 5. GPU: virtio-gpu + Venus (not passthrough)
-
-The Radeon 680M is an **iGPU** — it cannot be detached from the host, so
-classic VFIO GPU passthrough does not apply. Use:
-
-- Video model: **virtio** (virtio-gpu) with 3D acceleration enabled.
-- Guest Vulkan runs on the host's real driver via **Venus** (`vn` driver,
-  ships in Ubuntu 24.04's Mesa). Verify inside the guest:
-  `sudo apt install vulkan-tools && vulkaninfo | grep -i venus`.
-- Works for Wayland sessions and XWayland apps.
-
-If you later attach an **eGPU** or want to pass through a dedicated USB/NIC
-controller: enable `aspects.virtualisation.vfio.enable = true` (loads
-`vfio_pci` + `vfio_iommu_type1`), then bind the device before starting the
-VM:
-
-```bash
-echo "1022 1234" | sudo tee /sys/bus/pci/drivers/vfio-pci/new_id   # vendor device
-# or, for a specific device:
-echo 0000:01:00.0 | sudo tee /sys/bus/pci/devices/0000:01:00.0/driver/unbind
-echo vfio-pci | sudo tee /sys/bus/pci/devices/0000:01:00.0/driver_override
-echo 0000:01:00.0 | sudo tee /sys/bus/pci/drivers/vfio-pci/bind
+```nix
+aspects.virtualisation.vfio.enable = true;
 ```
 
-## 6. Optional tuning for dedicated work sessions
+Then bind the specific device before starting the VM. Do not attempt to bind
+the integrated Radeon GPU.
 
-Per-session hugepages (avoids permanent host RAM reservation on a 16 GB laptop):
+## 9. Optional Performance Tuning
+
+Allocate hugepages for a dedicated VM session:
 
 ```bash
-# Allocate 4 GB of 2M hugepages dynamically when needed:
 sudo virsh allocpages 2048 2M
 ```
 
-and add to the domain XML:
+Merge hugepages into the existing memory backing rather than adding a second
+element:
 
 ```xml
 <memoryBacking>
+  <source type="memfd"/>
+  <access mode="shared"/>
   <hugepages/>
 </memoryBacking>
 ```
 
-vCPU pinning (keep cores 0–1 for the host):
+Optional vCPU pinning example:
 
 ```xml
 <vcpu placement="static">8</vcpu>
 <cputune>
   <vcpupin vcpu="0" cpuset="2"/>
   <vcpupin vcpu="1" cpuset="3"/>
-  <!-- ... -->
 </cputune>
 ```
 
-## Clean slate
+## 10. Resize and Back Up
 
-VM disks live in `/var/lib/libvirt/images/` and guest homes in
-`/var/lib/libvirt/homes/` — both on the dedicated `vmdata` partition.
-Deleting a VM = delete its image and backing directory.
+Resize the qcow2 image on the host:
+
+```bash
+sudo qemu-img resize /var/lib/libvirt/images/ubuntu.qcow2 +16G
+```
+
+Then inspect the guest layout:
+
+```bash
+lsblk
+```
+
+Grow the relevant partition first, then the filesystem. For an ext4 filesystem
+directly on `/dev/vda1`, the final step would be:
+
+```bash
+sudo resize2fs /dev/vda1
+```
+
+The actual partition may differ, especially for a UEFI installation.
+
+Back up both mutable data locations separately:
+
+```bash
+sudo rsync -aHAX \
+  /var/lib/libvirt/images/ \
+  /path/to/backup/images/
+
+sudo rsync -aHAX \
+  /var/lib/libvirt/shares/ubuntu/ \
+  /path/to/backup/ubuntu-share/
+```
+
+Deleting a VM does not automatically delete its share. Remove the disk and
+share separately only when their data is no longer needed.

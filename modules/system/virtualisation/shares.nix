@@ -1,145 +1,65 @@
-# modules/system/virtualisation/shares.nix — Dedicated host-backed virtiofs shares and guest artifacts.
+# modules/system/virtualisation/shares.nix — Host-backed virtiofs data shares.
 { config, lib, pkgs, ... }:
 let
   cfg = config.aspects.virtualisation;
 
-  # Reviewed XML fragment for domain <devices> filesystem passthrough
-  shareXml = name: g: pkgs.writeText "virtfs-${name}-share.xml" ''
+  tagFor = name: "${name}_share";
+
+  shareXml = name: share: pkgs.writeText "virtfs-${name}-share.xml" ''
     <!-- Domain XML fragment: place inside <devices> -->
     <filesystem type="mount" accessmode="passthrough">
       <driver type="virtiofs" queue="1024"/>
-      <source dir="${g.hostPath}"/>
-      <target dir="home_share"/>
+      <source dir="${lib.escapeXML share.hostPath}"/>
+      <target dir="${tagFor name}"/>
     </filesystem>
   '';
 
-  # Reviewed XML fragment for domain <domain> memoryBacking shared memfd
-  memBackingXml = name: g: pkgs.writeText "virtfs-${name}-memory-backing.xml" ''
-    <!-- Domain XML fragment: place inside <domain> -->
+  memoryBackingXml = name: pkgs.writeText "virtfs-${name}-memory-backing.xml" ''
+    <!-- Merge this into the domain's existing <memoryBacking>, if needed. -->
     <memoryBacking>
       <source type="memfd"/>
       <access mode="shared"/>
     </memoryBacking>
   '';
-
-  # Portable guest setup script (POSIX sh): installs systemd mount unit and aligns UID/GID.
-  # Can be piped over SSH or copied manually: cat /etc/virtfs/<name>/setup-guest.sh | ssh guest 'sudo sh -s'
-  guestSetupScript = name: g:
-    pkgs.writeText "virtfs-${name}-setup-guest.sh" ''
-      #!/bin/sh
-      set -eu
-
-      TARGET="${g.target}"
-      UID_TARGET="${toString g.uid}"
-      GID_TARGET="${toString g.gid}"
-
-      echo "==> Setting up virtiofs mount at $TARGET (tag: home_share)"
-      mkdir -p "$TARGET"
-
-      # Generate systemd mount unit
-      UNIT_NAME="$(systemd-escape -p --suffix=mount "$TARGET")"
-      cat <<EOF > "/etc/systemd/system/$UNIT_NAME"
-      [Unit]
-      Description=virtiofs home share (tag: home_share)
-      After=network.target
-
-      [Mount]
-      What=home_share
-      Where=$TARGET
-      Type=virtiofs
-      Options=defaults,noatime
-
-      [Install]
-      WantedBy=multi-user.target
-      EOF
-
-      systemctl daemon-reload
-      systemctl enable --now "$UNIT_NAME"
-
-      # Align current non-root user UID/GID if needed
-      TARGET_USER="''${SUDO_USER:-$USER}"
-      if [ -n "$TARGET_USER" ] && [ "$TARGET_USER" != "root" ]; then
-        CURRENT_UID="$(id -u "$TARGET_USER" 2>/dev/null || echo "")"
-        CURRENT_GID="$(id -g "$TARGET_USER" 2>/dev/null || echo "")"
-
-        if [ "$CURRENT_GID" != "$GID_TARGET" ]; then
-          groupmod -g "$GID_TARGET" -o "$TARGET_USER" 2>/dev/null || true
-        fi
-        if [ "$CURRENT_UID" != "$UID_TARGET" ]; then
-          usermod -u "$UID_TARGET" -o "$TARGET_USER" 2>/dev/null || true
-        fi
-      fi
-
-      echo "==> Done. virtiofs share mounted at $TARGET."
-      echo "==> Note: libvirt VM snapshots do NOT include virtiofs contents. Back up $TARGET independently."
-    '';
 in
 {
-  options.aspects.virtualisation = {
-    guests = lib.mkOption {
-      type = lib.types.attrsOf (lib.types.submodule {
-        options = {
-          hostPath = lib.mkOption {
-            type = lib.types.str;
-            description = "Host-backed backing directory shared into the guest via virtiofs.";
-          };
-          target = lib.mkOption {
-            type = lib.types.str;
-            description = "Mount point inside the guest.";
-          };
-          uid = lib.mkOption {
-            type = lib.types.int;
-            default = 1000;
-            description = "Host UID the guest user is aligned to.";
-          };
-          gid = lib.mkOption {
-            type = lib.types.int;
-            default = 1000;
-            description = "Host GID the guest user is aligned to.";
-          };
-          hostLink = lib.mkOption {
-            type = lib.types.nullOr lib.types.str;
-            default = null;
-            description = "Optional host-side convenience symlink pointing to hostPath.";
-          };
-        };
-      });
-      default = { };
-      description = ''
-        Guest definitions (host data). Generates declarative directories,
-        reviewed libvirt XML fragments, and portable guest setup scripts under /etc/virtfs/<name>/.
-      '';
-    };
-  };
+  config = lib.mkIf (cfg.enable && cfg.virtiofs.enable) {
+    assertions = lib.flatten (lib.mapAttrsToList (name: share: [
+      {
+        assertion = builtins.match "^[A-Za-z0-9][A-Za-z0-9_-]*$" name != null;
+        message = "aspects.virtualisation.virtiofs.shares.${name} must use only alphanumeric characters, underscores, and dashes, starting with alphanumeric";
+      }
+      {
+        assertion = lib.hasPrefix "/" share.hostPath && share.hostPath != "/";
+        message = "aspects.virtualisation.virtiofs.shares.${name}.hostPath must be an absolute non-root path: ${share.hostPath}";
+      }
+      {
+        assertion = share.uid >= 0 && share.gid >= 0;
+        message = "aspects.virtualisation.virtiofs.shares.${name} uid and gid must be non-negative";
+      }
+    ]) cfg.virtiofs.shares);
 
-  config = lib.mkIf cfg.enable {
-    # Declarative host directory creation with explicit ownership and permissions
+    # Only the share root is managed. Do not recursively rewrite permissions
+    # inside a live tree owned by the guest.
     systemd.tmpfiles.rules = [
       "d /var/lib/libvirt 0755 root root -"
       "d /var/lib/libvirt/images 0755 root root -"
-      "d /var/lib/libvirt/homes 0755 root root -"
-    ] ++ lib.concatLists (lib.mapAttrsToList (name: g: [
-      "d ${g.hostPath} 0750 ${toString g.uid} ${toString g.gid} -"
-    ] ++ lib.optional (g.hostLink != null) "L+ ${g.hostLink} - ${toString g.uid} ${toString g.gid} - ${g.hostPath}"
-    ) cfg.guests);
+      "d /var/lib/libvirt/shares 0755 root root -"
+    ] ++ lib.concatLists (lib.mapAttrsToList (name: share: [
+      "d ${share.hostPath} 0750 ${toString share.uid} ${toString share.gid} -"
+    ]) cfg.virtiofs.shares);
 
-    # Export reviewed XML fragments and portable guest setup scripts under /etc/virtfs/<name>/
-    environment.etc = lib.listToAttrs (lib.concatLists (lib.mapAttrsToList (name: g: [
+    # VM definitions and guest mount units are intentionally not generated:
+    # they are mutable libvirt/guest state and must be configured together.
+    environment.etc = lib.listToAttrs (lib.concatLists (lib.mapAttrsToList (name: share: [
       {
         name = "virtfs/${name}/share.xml";
-        value = { source = shareXml name g; };
+        value = { source = shareXml name share; };
       }
       {
         name = "virtfs/${name}/memory-backing.xml";
-        value = { source = memBackingXml name g; };
+        value = { source = memoryBackingXml name; };
       }
-      {
-        name = "virtfs/${name}/setup-guest.sh";
-        value = {
-          source = guestSetupScript name g;
-          mode = "0755";
-        };
-      }
-    ]) cfg.guests));
+    ]) cfg.virtiofs.shares));
   };
 }

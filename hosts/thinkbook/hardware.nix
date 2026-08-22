@@ -14,7 +14,7 @@
 #       p2 = swap      (label "swap", 8 GiB)
 #       p3 = ext4 root (label "nixos", rest)     ← /
 #     nvme1n1 (KIOXIA) — data disk
-#       p1 = ext4 VM images (label "vmdata", 150 GiB) ← /var/lib/libvirt/images
+#       p1 = ext4 VM data (label "vmdata", 150 GiB) ← /var/lib/libvirt
 #       p2 = ext4 media/games (label "media", rest)   ← /home/sid/media
 #   WiFi: MediaTek MT7921e (14c3:0616)
 #   BT:   Foxconn MediaTek (btusb)
@@ -56,10 +56,9 @@
     ];
   };
 
-  # VM data partition: mounted at /var/lib/libvirt so both guest disk
-  # images (/var/lib/libvirt/images) and virtiofs host-backed guest homes
-  # (/var/lib/libvirt/homes) live on their own partition without competing
-  # with the root filesystem.
+  # VM data partition: mounted at /var/lib/libvirt so guest disk images
+  # and virtiofs host-backed data shares live separately from the root
+  # filesystem.
   fileSystems."/var/lib/libvirt" = {
     device = "/dev/disk/by-label/vmdata";
     fsType = "ext4";

@@ -1,21 +1,10 @@
 # modules/system/virtualisation/platform.nix — libvirtd, QEMU, virt-manager, virtiofsd.
+# The libvirt default network and VM definitions remain operator-managed state.
 { config, lib, pkgs, ... }:
 let
   cfg = config.aspects.virtualisation;
 in
 {
-  options.aspects.virtualisation = {
-    qemuPackage = lib.mkOption {
-      type = lib.types.package;
-      default = pkgs.qemu_kvm;
-      defaultText = lib.literalExpression "pkgs.qemu_kvm";
-      description = ''
-        QEMU package. qemu_kvm emulates only the host architecture (smaller);
-        use pkgs.qemu for cross-architecture emulation.
-      '';
-    };
-  };
-
   config = lib.mkIf cfg.enable {
     virtualisation.libvirtd = {
       enable = true;
@@ -26,16 +15,17 @@ in
         # virtiofsd (Rust) — its vhost-user JSON descriptor is linked into
         # /var/lib/qemu/vhost-user by the libvirtd module, so libvirt
         # auto-discovers it for <filesystem type="mount"> + virtiofs.
-        vhostUserPackages = [ pkgs.virtiofsd ];
-        # QEMU runs as root by default; don't chown disk images behind our
-        # back (images are created root-owned by virt-disk anyway).
-        verbatimConfig = ''
-          remember_owner = 0
-        '';
+        vhostUserPackages = lib.optionals cfg.virtiofs.enable [ pkgs.virtiofsd ];
       };
     };
 
-    programs.virt-manager.enable = true;
-    environment.systemPackages = [ pkgs.virt-viewer ];
+    programs.virt-manager.enable = cfg.virtManager.enable;
+    environment.systemPackages = lib.optionals cfg.virtManager.enable [ pkgs.virt-viewer ];
+
+    security.polkit.enable = lib.mkDefault true;
+
+    # Keep both the config generator and daemon off a missing libvirt mount.
+    systemd.services.libvirtd-config.unitConfig.RequiresMountsFor = [ "/var/lib/libvirt" ];
+    systemd.services.libvirtd.unitConfig.RequiresMountsFor = [ "/var/lib/libvirt" ];
   };
 }
