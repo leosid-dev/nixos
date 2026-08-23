@@ -83,7 +83,14 @@ lib.mkHost {
         };
 
         hardware = {
-          amdRembrandt.enable = true;
+          amdRembrandt = {
+            enable = true;
+            perfTuning.enable = true;
+            audio = {
+              enable = true;
+              powerSave = 0;
+            };
+          };
           network = {
             enable = true;
             bluetooth.enable = true;

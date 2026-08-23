@@ -252,8 +252,9 @@ but proves the relocated checkout works end to end.
   "Window Protocol" says `wayland` (native, via the system-wide
   `MOZ_ENABLE_WAYLAND=1`).
 - **Network:** `nmcli device` shows WiFi connected; Bluetooth pairs.
-- **Audio:** play something; EasyEffects autoloads the
-  `dolby-approximation` preset (oneshot unit from the desktop profile).
+- **Audio:** play something; the ThinkBook audio profile autoloads
+  `thinkbook-speakers-dolby-approximation-v1`. The `headphones-neutral` preset
+  is available for manual selection when using headphones.
 - **Mounts:** `findmnt /var/lib/libvirt /home/sid/media` shows the
   two data partitions.
 - **Firmware:** `fwupdmgr refresh && fwupdmgr update` (manual, on demand).
@@ -268,6 +269,6 @@ Full checklist: STATE.md → "Verification & Rollout".
 |---|---|
 | Activation fails mentioning sops/secrets | Step 6 not done — the placeholder store is still in place. |
 | WiFi stalls / DMA timeouts | MT7921e quirk — `aspects.hardware.network.wifi.aspmFix` is already on for this host. |
-| Audio pops on codec wake | ALC257 quirk — `audioPowerSave = 0` is already the default in `amd-rembrandt.nix`. |
-| Screen flicker / external monitor freeze | Set `aspects.hardware.amdRembrandt.flickerFix = true` and rebuild. |
+| Audio pops on codec wake | ALC257 quirk — the ThinkBook explicitly selects `aspects.hardware.amdRembrandt.audio.powerSave = 0`. |
+| Screen flicker / external monitor freeze | Set `aspects.hardware.amdRembrandt.flickerFix.enable = true` and rebuild. |
 | `/boot` full on rebuild | `configurationLimit = 3` bounds generations; `nix-collect-garbage -d` if needed. |

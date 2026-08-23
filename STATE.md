@@ -141,15 +141,18 @@ nixos/
 │       ├── terminal.nix                   # Kitty, structured palette, sets TERMINAL; opacity/fontSize/padding knobs
 │       ├── theme.nix                      # GTK/QT/cursor/dconf (accent enum, mode, font defaults, palette)
 │       ├── noctalia.nix                   # Noctalia v5 shell (m* custom palette dark+light, reads theme.mode)
-│       ├── audio.nix                      # EasyEffects DSP + presets option + graphViewer.enable
+│       ├── audio.nix                      # Generic EasyEffects DSP service + preset deployment
 │       └── agents.nix                     # LLM agents from llm-agents.nix (packages default [])
 │
 ├── profiles/
-│   └── desktop.nix                        # Composes all HM modules + sets explicit persona aspect choices
+│   ├── desktop.nix                        # Reusable desktop persona and generic HM aspects
+│   └── thinkbook-audio.nix                # ThinkBook speaker/headphone preset policy
 │
 └── assets/
     ├── easyeffects/
-    │   └── dolby-approximation.json       # EE7 preset (plugins_order + blocklist) — wired by desktop profile
+    │   ├── README.md                       # Preset scope, activation, and calibration notes
+    │   ├── thinkbook-speakers-dolby-approximation-v1.json # ThinkBook internal speaker DSP
+    │   └── headphones-neutral.json        # Neutral headphone preset (flat + safety limiter)
     ├── ricing/
     │   └── README.md                      # Ricing cheat sheet: aspect knobs, examples, checks
     └── virt/
@@ -219,11 +222,12 @@ nixos/
      `secrets/.sops.yaml`
    - `sops secrets/secrets.yaml` → set `users/sid/password` to
      `mkpasswd -m yescrypt` hash
-2. **Flake check:** `nix flake check` (evaluates flake outputs, validates EasyEffects preset JSON schema)
+2. **Flake check:** `nix flake check` (evaluates the flake outputs; no feature-specific asset checks are defined)
 3. **Static gate:** `nix eval .#nixosConfigurations.thinkbook.config.system.build.toplevel.drvPath`
 4. **Full build:** `nixos-rebuild build --flake .#thinkbook` (then `switch`)
-5. **Audio preset:** EasyEffects autoloads `dolby-approximation` on session start
-   (oneshot unit installed by the desktop profile).
+5. **Audio preset:** The ThinkBook Home Manager audio profile autoloads
+   `thinkbook-speakers-dolby-approximation-v1` on session start. The neutral
+   headphone preset is deployed for manual selection and is not autoloaded.
 6. **Firmware:** `fwupdmgr refresh && fwupdmgr update` (manual, on demand).
 7. **LLM agents:** `opencode --version && grok --version`; auth is
    imperative (`opencode auth login`, grok login) — nothing declarative.
@@ -253,8 +257,10 @@ nixos/
 | `aspects.virtualisation.ksm.enable` | virt/features.nix | `false` | Memory deduplication (off on laptops to save CPU/battery) |
 | `aspects.virtualisation.swtpm.enable` | virt/features.nix | `false` | Emulated TPM 2.0 |
 | `aspects.virtualisation.spiceUsbRedirection.enable` | virt/features.nix | `false` | SPICE USB device redirection |
+| `aspects.virtualisation.vfio.ids` | virt/features.nix | `[]` | PCI IDs (`vendor:device`) bound to vfio-pci via `vfio-pci.ids`; empty list = modules loaded, nothing bound (hardware-dependent operator choice) |
 | `documentation.nixos.enable` | core/default.nix | `false` | drops NixOS HTML/manual generation |
-| `aspects.hardware.amdRembrandt.perfTuning` | amd-rembrandt.nix | `true` | iommu=pt, nowatchdog, vm.swappiness=10 |
+| `aspects.hardware.amdRembrandt.perfTuning.enable` | amd-rembrandt.nix | `false` | iommu=pt, nowatchdog, vm.swappiness=10 |
+| `aspects.hardware.amdRembrandt.audio.enable` | amd-rembrandt.nix | `false` | Explicit host-selected HDA power-save tuning |
 | `aspects.hardware.amdRembrandt.abmLevel` | amd-rembrandt.nix | `null` | Adaptive Backlight Management knob |
 | `lazytime` on ext4 mounts | hosts/thinkbook/hardware.nix | on | journal write reduction |
 | `nix.settings.{auto-optimise-store,max-jobs,cores}` | core/nix.nix | — | store dedup on write + full parallelism |

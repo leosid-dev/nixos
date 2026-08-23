@@ -38,12 +38,12 @@
               description = "Host-backed share directory (absolute path).";
             };
             uid = lib.mkOption {
-              type = lib.types.int;
+              type = lib.types.ints.unsigned;
               default = 1000;
               description = "Host UID that owns the share directory.";
             };
             gid = lib.mkOption {
-              type = lib.types.int;
+              type = lib.types.ints.unsigned;
               default = 1000;
               description = "Host GID that owns the share directory.";
             };
@@ -82,6 +82,18 @@
         VFIO device passthrough plumbing (eGPU / dedicated USB or NIC controllers).
         Not usable for the integrated GPU.
       '';
+
+      ids = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        example = [ "1022:14e0" "1022:14e1" ];
+        description = ''
+          PCI device IDs (vendor:device) to bind to vfio-pci at boot via
+          vfio-pci.ids. Hardware-dependent operator choice: with an empty
+          list the modules load but no device is bound, so passthrough
+          stays inert until IDs are provided here.
+        '';
+      };
     };
   };
 

@@ -4,7 +4,10 @@
 # home-manager.users in mkHost.
 {
   sid = {
-    imports = [ ../../profiles/desktop.nix ];
+    imports = [
+      ../../profiles/desktop.nix
+      ../../profiles/thinkbook-audio.nix
+    ];
 
     # Home Manager itself must be added to the user's profile so the
     # managed `home-manager` command and activation survive a rebuild.

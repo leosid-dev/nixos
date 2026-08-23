@@ -12,7 +12,8 @@ in
 
     boot.kernelModules =
       lib.optionals cfg.vfio.enable [ "vfio_pci" "vfio_iommu_type1" ];
-    boot.initrd.kernelModules =
-      lib.optionals cfg.vfio.enable [ "vfio_pci" "vfio_iommu_type1" ];
+    boot.kernelParams = lib.optionals (cfg.vfio.enable && cfg.vfio.ids != [ ]) [
+      "vfio-pci.ids=${lib.concatStringsSep "," cfg.vfio.ids}"
+    ];
   };
 }

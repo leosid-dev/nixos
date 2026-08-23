@@ -41,14 +41,6 @@
     noctalia.enable = true;
     audio = {
       enable = true;
-      graphViewer.enable = true;
-      presets = [
-        {
-          name = "dolby-approximation";
-          file = ../assets/easyeffects/dolby-approximation.json;
-          loadOnStart = true;
-        }
-      ];
     };
     agents = {
       enable = true;

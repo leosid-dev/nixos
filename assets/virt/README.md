@@ -74,7 +74,8 @@ ping -c 3 1.1.1.1
 virt-disk ubuntu 64G
 ```
 
-This creates a sparse qcow2 image with metadata preallocation:
+This creates a sparse qcow2 image with metadata preallocation, owned by
+`qemu-libvirtd` (the user libvirtd runs QEMU as) so guests can write to it:
 
 ```text
 /var/lib/libvirt/images/ubuntu.qcow2
@@ -235,10 +236,11 @@ ls -l /var/lib/libvirt/shares/ubuntu/guest-test
 
 ## 7. Optional Shared Memory Backing
 
-The host also generates a memory-backing reference:
+The host also generates a memory-backing reference (shared across all
+shares):
 
 ```bash
-cat /etc/virtfs/ubuntu/memory-backing.xml
+cat /etc/virtfs/memory-backing.xml
 ```
 
 If the domain needs shared memfd backing for virtiofs DAX, merge it into the
@@ -271,8 +273,17 @@ controller, or dedicated NIC. Enable the host option first:
 aspects.virtualisation.vfio.enable = true;
 ```
 
-Then bind the specific device before starting the VM. Do not attempt to bind
-the integrated Radeon GPU.
+Binding is hardware-dependent and entirely the operator's choice: list the
+PCI IDs (vendor:device) of the devices to detach from their host drivers.
+With no IDs, the vfio modules load but nothing is bound — the aspect stays
+inert until you fill this in:
+
+```nix
+aspects.virtualisation.vfio.ids = [ "1022:14e0" "1022:14e1" ];
+```
+
+Find candidate IDs with `lspci -nn`. Do not attempt to bind the integrated
+Radeon GPU.
 
 ## 9. Optional Performance Tuning
 

@@ -10,39 +10,21 @@ in
   options.aspects.hardware.amdRembrandt = {
     enable = lib.mkEnableOption "AMD Rembrandt SoC support";
 
-    audioPowerSave = lib.mkOption {
-      type = lib.types.ints.between 0 60;
-      default = 0;
-      description = ''
-        HDA codec runtime power-save timeout (seconds). 0 disables it.
-        On this machine power-save causes audible pops/crackle when the
-        Realtek ALC257 codec wakes (see Lenovo/Ubuntu bug reports), so it
-        defaults to off.
-      '';
+    audio = {
+      enable = lib.mkEnableOption "AMD HDA audio power-save tuning";
+      powerSave = lib.mkOption {
+        type = lib.types.ints.between 0 60;
+        default = 0;
+        description = "HDA codec runtime power-save timeout in seconds.";
+      };
     };
 
-    flickerFix = lib.mkOption {
-      type = lib.types.bool;
-      default = false;
-      description = ''
-        Disable Panel Self Refresh via amdgpu.dcdebugmask=0x10. Toggle this
-        if you observe screen flicker or external-monitor freezes (a known
-        DCN 3.1.4 issue on Rembrandt laptops).
-      '';
+    flickerFix = {
+      enable = lib.mkEnableOption "the AMD panel self-refresh workaround";
     };
 
-    perfTuning = lib.mkOption {
-      type = lib.types.bool;
-      default = true;
-      description = ''
-        Safe performance/power knobs for the SoC:
-        - iommu=pt: passthrough IOMMU mode — no translation overhead for
-          host devices and a prerequisite for VFIO passthrough.
-        - nowatchdog: disable the hardware watchdog timer (one less thing
-          polling; no downside on a laptop).
-        - vm.swappiness=10: zram-friendly — prefer compressed RAM over
-          disk swap until memory pressure is real.
-      '';
+    perfTuning = {
+      enable = lib.mkEnableOption "AMD Rembrandt performance and power tuning";
     };
 
     abmLevel = lib.mkOption {
@@ -74,15 +56,15 @@ in
         "amd_pstate=active"        # Driver: amd-pstate-epp
         "amdgpu.gpu_recovery=1"    # Enable automatic GPU recovery on hangs
       ]
-      ++ lib.optionals cfg.flickerFix [ "amdgpu.dcdebugmask=0x10" ]
-      ++ lib.optionals cfg.perfTuning [
+      ++ lib.optionals cfg.flickerFix.enable [ "amdgpu.dcdebugmask=0x10" ]
+      ++ lib.optionals cfg.perfTuning.enable [
         "iommu=pt"    # Passthrough IOMMU: no host-device translation; enables VFIO
         "nowatchdog"  # No hardware-watchdog polling on laptops
       ]
       ++ lib.optionals (cfg.abmLevel != null) [ "amdgpu.abmlevel=${toString cfg.abmLevel}" ];
 
     # zram-friendly swap pressure: prefer compressed RAM over disk swap.
-    boot.kernel.sysctl = lib.mkIf cfg.perfTuning { "vm.swappiness" = 10; };
+    boot.kernel.sysctl = lib.mkIf cfg.perfTuning.enable { "vm.swappiness" = 10; };
 
     # ── iGPU & VAAPI Hardware Acceleration ────────────────────────
     hardware.graphics = {
@@ -99,8 +81,8 @@ in
     # modules/system/hardware/network.nix (single canonical source).
 
     # HDA codec power management (0 = disabled to avoid wake pops)
-    boot.extraModprobeConfig = ''
-      options snd_hda_intel power_save=${toString cfg.audioPowerSave} power_save_controller=Y
+    boot.extraModprobeConfig = lib.mkIf cfg.audio.enable ''
+      options snd_hda_intel power_save=${toString cfg.audio.powerSave} power_save_controller=Y
     '';
   };
 }

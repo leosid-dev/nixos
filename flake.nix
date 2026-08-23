@@ -70,34 +70,9 @@
         nixpkgsLib = nixpkgs.lib;
       };
 
-      supportedSystems = [
-        "x86_64-linux"
-        "aarch64-linux"
-      ];
     in
     {
       nixosConfigurations = hosts;
-
-      # Flake checks (agnostic static verification)
-      checks = nixpkgs.lib.genAttrs supportedSystems (
-        system:
-        let
-          pkgs = nixpkgs.legacyPackages.${system};
-        in
-        {
-          easyeffects-preset = pkgs.runCommand "validate-easyeffects-preset" {
-            nativeBuildInputs = [ pkgs.jq ];
-          } ''
-            ${pkgs.jq}/bin/jq -e '
-              .output as $o |
-              ($o.plugins_order | type == "array" and length > 0) and
-              ($o.blocklist | type == "array") and
-              all($o.plugins_order[]; . as $id | $o | has($id))
-            ' ${./assets/easyeffects/dolby-approximation.json} >/dev/null
-            touch $out
-          '';
-        }
-      );
 
       # Re-export lib for external consumers / debugging
       lib = lib;

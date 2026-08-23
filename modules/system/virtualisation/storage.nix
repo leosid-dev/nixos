@@ -60,12 +60,18 @@ let
       sudo ${cfg.qemuPackage}/bin/qemu-img create -f qcow2 -o preallocation=metadata,cluster_size=64k "$img" "$size"
     fi
 
+    # Hand the image to the user libvirtd runs QEMU as, so guests can write.
+    sudo chown qemu-libvirtd:qemu-libvirtd "$img"
+    sudo chmod 0600 "$img"
+
     echo "Created $img ($fmt, $size)"
     echo "Attach as virtio-blk with cache='none', io='native', discard='unmap' (+ 1 IOThread)."
   '';
 in
 {
   config = lib.mkIf (cfg.enable && cfg.diskTool.enable) {
-    environment.systemPackages = [ pkgs.qemu-utils virt-disk ];
+    # qemu-img comes from cfg.qemuPackage inside the script; no separate
+    # qemu-utils copy in the profile (single canonical source).
+    environment.systemPackages = [ virt-disk ];
   };
 }

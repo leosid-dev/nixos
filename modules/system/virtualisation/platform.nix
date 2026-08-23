@@ -27,5 +27,13 @@ in
     # Keep both the config generator and daemon off a missing libvirt mount.
     systemd.services.libvirtd-config.unitConfig.RequiresMountsFor = [ "/var/lib/libvirt" ];
     systemd.services.libvirtd.unitConfig.RequiresMountsFor = [ "/var/lib/libvirt" ];
+
+    # Base libvirt state dirs: needed by the daemon (default storage pool)
+    # and virt-disk regardless of any optional sub-feature.
+    # Only directory roots are managed; contents stay operator-owned.
+    systemd.tmpfiles.rules = [
+      "d /var/lib/libvirt 0755 root root -"
+      "d /var/lib/libvirt/images 0755 root root -"
+    ];
   };
 }
