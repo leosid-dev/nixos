@@ -95,6 +95,7 @@ the aspects their hardware needs.
 
 - hardware coverage for the target machine (Ryzen 7 7735HS + Radeon 680M)
 - WiFi (MT7921e), BT, NVMe, USB4 drivers + sub-options
-- audio DSP via PipeWire + EasyEffects (Dolby-approximation preset for
-  Realtek ALC257; preset path is a profile option, not hardcoded in the
-  generic module)
+- audio DSP via PipeWire + EasyEffects (convolution presets built from
+  Dolby impulse responses captured on the machine, for the Realtek ALC257
+  analog path; preset and impulse paths are profile options, not hardcoded
+  in the generic module)

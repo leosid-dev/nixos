@@ -253,8 +253,9 @@ but proves the relocated checkout works end to end.
   `MOZ_ENABLE_WAYLAND=1`).
 - **Network:** `nmcli device` shows WiFi connected; Bluetooth pairs.
 - **Audio:** play something; the ThinkBook audio profile autoloads
-  `thinkbook-speakers-dolby-approximation-v1`. The `headphones-neutral` preset
-  is available for manual selection when using headphones.
+  `thinkbook-speakers-dolby-music`. The `thinkbook-speakers-dolby-movie` /
+  `thinkbook-speakers-enhanced` / `headphones-neutral` presets are available
+  for manual selection (use `headphones-neutral` when using headphones).
 - **Mounts:** `findmnt /var/lib/libvirt /home/sid/media` shows the
   two data partitions.
 - **Firmware:** `fwupdmgr refresh && fwupdmgr update` (manual, on demand).

@@ -1,11 +1,27 @@
 # modules/home/audio.nix — EasyEffects audio DSP (generic).
 #
-# Generic EasyEffects deployment: package, user systemd service, and
-# zero-or-more preset files. Machine-specific tuning (EQ curve, codec
-# quirks, etc.) lives in the consuming profile/host — never here.
+# Generic EasyEffects deployment: package, user systemd service,
+# zero-or-more preset files, and zero-or-more convolver impulse
+# response files. Machine-specific tuning (EQ curve, convolution
+# kernels, codec quirks, etc.) lives in the consuming profile/host —
+# never here.
 { config, lib, pkgs, ... }:
 let
   cfg = config.aspects.home.audio;
+
+  # Convolver presets reference kernels by stem (filename without the
+  # .irs extension); deployment keeps the full filename.
+  impulseStems = map (i: lib.removeSuffix ".irs" i.name) cfg.impulses;
+
+  # kernel-name references declared by every convolver stage of a preset.
+  presetKernels =
+    p:
+    let
+      data = builtins.fromJSON (builtins.readFile p.file);
+      out = data.output or { };
+      convolvers = lib.filter (n: lib.hasPrefix "convolver#" n) (lib.attrNames out);
+    in
+    lib.filter (n: n != null) (map (n: out.${n}.kernel-name or null) convolvers);
 
   loadPresetScript = pkgs.writeShellScript "easyeffects-load-preset" ''
       i=0
@@ -21,6 +37,21 @@ let
       exit 0
     '';
 
+  # graphical-session.target activates before the compositor's socket
+  # accepts connections; Qt aborts (core-dump) without it. Poll for the
+  # Wayland socket briefly before starting. Best effort: after the wait,
+  # proceed anyway and let Restart=on-failure handle the rest.
+  waitDisplayScript = pkgs.writeShellScript "easyeffects-wait-display" ''
+      if [ -z "''${WAYLAND_DISPLAY:-}" ]; then exit 0; fi
+      i=0
+      while [ $i -lt 15 ]; do
+        [ -S "''${XDG_RUNTIME_DIR:-}/''${WAYLAND_DISPLAY}" ] && exit 0
+        sleep 1
+        i=$((i + 1))
+      done
+      exit 0
+    '';
+
   loaderService = {
     Unit = {
       Description = "Load EasyEffects preset '${cfg.activePreset}'";
@@ -31,7 +62,8 @@ let
     Service = {
       Type = "oneshot";
       RemainAfterExit = true;
-      TimeoutStartSec = "25s";
+      TimeoutStartSec = "90s";
+      ExecStartPre = lib.optional (!cfg.service.headless.enable) "${waitDisplayScript}";
       ExecStart = "${loadPresetScript} ${lib.escapeShellArg cfg.activePreset}";
     };
     Install.WantedBy = [ "graphical-session.target" ];
@@ -82,6 +114,26 @@ in
       default = [ ];
       description = "EasyEffects presets to deploy; activePreset controls startup loading.";
     };
+
+    impulses = lib.mkOption {
+      type = lib.types.listOf (lib.types.submodule {
+        options = {
+          name = lib.mkOption {
+            type = lib.types.strMatching "[a-zA-Z0-9][a-zA-Z0-9._-]*\\.irs";
+            description = ''
+              Impulse response filename (with .irs extension). Convolver
+              stages reference it by the stem (name without extension).
+            '';
+          };
+          file = lib.mkOption {
+            type = lib.types.path;
+            description = "Path to the impulse response file.";
+          };
+        };
+      });
+      default = [ ];
+      description = "Convolver impulse response files deployed to EasyEffects' irs directory.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -89,13 +141,19 @@ in
       pkgs.easyeffects
     ] ++ lib.optional cfg.graphViewer.enable pkgs.crosspipe;
 
-    # Deploy each preset under EasyEffects' standard directory layout ($XDG_DATA_HOME)
+    # Deploy presets and impulse responses under EasyEffects' standard
+    # directory layout ($XDG_DATA_HOME).
     xdg.dataFile = lib.listToAttrs (map
       (p: {
         name = "easyeffects/output/${p.name}.json";
         value = { source = p.file; };
       })
-      cfg.presets);
+      cfg.presets) // lib.listToAttrs (map
+      (i: {
+        name = "easyeffects/irs/${i.name}";
+        value = { source = i.file; };
+      })
+      cfg.impulses);
 
     assertions = [
       {
@@ -108,9 +166,27 @@ in
           == lib.length (lib.unique (map (p: p.name) cfg.presets));
         message = "aspects.home.audio.presets must not contain duplicate names.";
       }
+      {
+        assertion =
+          lib.length cfg.impulses
+          == lib.length (lib.unique (map (i: i.name) cfg.impulses));
+        message = "aspects.home.audio.impulses must not contain duplicate names.";
+      }
+      {
+        assertion = lib.all (p: lib.all (k: builtins.elem k impulseStems) (presetKernels p)) cfg.presets;
+        message = "every convolver kernel-name in aspects.home.audio.presets must match a deployed aspects.home.audio.impulses entry.";
+      }
     ];
 
     # EasyEffects in service mode, tied to the graphical session.
+    #
+    # Runs display-connected by default: EasyEffects is single-instance
+    # (lock file + local socket), so a GUI launch is forwarded to this
+    # service and shows its window on demand. --service-mode alone does
+    # NOT hide the window in the Qt rewrite; --hide-window keeps it
+    # hidden until a launch requests it. (The headless option swaps the
+    # display for an offscreen Qt platform and thereby locks the GUI —
+    # only for hosts without a display.)
     systemd.user.services = {
       easyeffects = {
         Unit = {
@@ -121,7 +197,8 @@ in
         Service = {
           Type = "simple";
           Environment = lib.optional cfg.service.headless.enable "QT_QPA_PLATFORM=offscreen";
-          ExecStart = "${pkgs.easyeffects}/bin/easyeffects --service-mode";
+          ExecStartPre = lib.optional (!cfg.service.headless.enable) "${waitDisplayScript}";
+          ExecStart = "${pkgs.easyeffects}/bin/easyeffects --service-mode --hide-window";
           Restart = "on-failure";
           RestartSec = "2s";
         };

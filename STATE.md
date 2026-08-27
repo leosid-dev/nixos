@@ -1,6 +1,31 @@
 # STATE.md — Architecture, Design Principles & Current State
 
-> Last updated: 2026-08-27 · cpu-power widget hardened to production grade
+> Last updated: 2026-08-27 · ThinkBook speaker DSP rebuilt on convolution:
+> the hand-tuned EQ "Dolby approximation" preset (v1) is replaced by presets
+> that convolve vendor-captured Dolby impulse responses of a ThinkBook 16 G7
+> (WASAPI loopback, shuhaowu/linux-thinkpad-speaker-improvements @ 92410d6,
+> vendored under assets/easyeffects/irs/ with verified blob SHAs) behind a
+> brickwall limiter with threshold boost; a convolver → exciter → autogain →
+> limiter enhanced variant follows the stage design of mister2d/
+> thinkpad-linux-audio (classifier-dependent multiband compression dropped).
+> The generic audio HM module gained an impulses deployment option plus
+> eval-time kernel-name resolution assertions; the ThinkBook audio profile
+> autoloads thinkbook-speakers-dolby-music and deploys a movie variant for
+> manual selection. The EasyEffects service runs display-connected again
+> (service.headless off on ThinkBook): an offscreen instance holds the
+> app's single-instance lock on an invisible display and the GUI launch
+> gets forwarded into the void, while niri already imports the session
+> env (WAYLAND_DISPLAY, QT_QPA_PLATFORM) into the systemd user manager
+> for the service to use. The service starts with --service-mode
+> --hide-window: in the Qt rewrite --service-mode alone does not hide
+> the window (it only persists a settings flag), while --hide-window
+> creates the window hidden and a plain app launch forwards to the
+> service and shows it on demand. A best-effort display-wait
+> ExecStartPre (poll the Wayland socket ≤15s) protects both the service
+> and the preset loader from the graphical-session.target-races-the-
+> compositor-socket startup coredump; loader TimeoutStartSec raised to
+> match.
+> Prior: cpu-power widget hardened to production grade
 > (Luau sampler: source pinning with baseline reset, paired max-range index,
 > suspend/clock-step discontinuity guards, maxWatts as sanity gate instead of
 > display clamp, tooltip enriched via systemStats() to match the sibling
@@ -158,19 +183,25 @@ nixos/
 │       ├── noctalia-cpu-power.nix         # CPU power plugin deploy only (RAPL/hwmon paths,
 │       │                                  #   eval assertions; no bar layout overrides)
 │       ├── nautilus.nix                   # Nautilus file manager + dconf defaults (aspects.home.nautilus)
-│       ├── audio.nix                      # Generic EasyEffects DSP service + preset deployment
+│       ├── audio.nix                      # Generic EasyEffects DSP service + preset/impulse
+│       │                                  #   deployment (kernel-name assertions; hide-window
+│       │                                  #   startup + display-wait ExecStartPre)
 │       └── agents.nix                     # LLM agents from llm-agents.nix (packages default [])
 │
 ├── profiles/
 │   ├── desktop.nix                        # Reusable desktop persona and generic HM aspects
-│   ├── thinkbook-audio.nix                # ThinkBook speaker/headphone preset policy
+│   ├── thinkbook-audio.nix                # ThinkBook convolution speaker presets + headphone preset policy
 │   └── thinkbook-noctalia.nix             # ThinkBook Noctalia policy (uiScale, CPU power RAPL paths)
 │
 └── assets/
     ├── easyeffects/
-    │   ├── README.md                       # Preset scope, activation, and calibration notes
-    │   ├── thinkbook-speakers-dolby-approximation-v1.json # ThinkBook internal speaker DSP
-    │   └── headphones-neutral.json        # Neutral headphone preset (flat + safety limiter)
+    │   ├── README.md                       # Approach, preset guide, IRS provenance + caveats
+    │   ├── thinkbook-speakers-dolby-music.json  # Convolver (DolbyMusic IRS) → limiter (autoloaded)
+    │   ├── thinkbook-speakers-dolby-movie.json  # Convolver (DolbyMovie IRS) → limiter
+    │   ├── thinkbook-speakers-enhanced.json     # Convolver → exciter → autogain → limiter
+    │   ├── headphones-neutral.json        # Neutral headphone preset (safety limiter only)
+    │   └── irs/
+    │       └── thinkbook16-g7/             # Dolby IRS captured from ThinkBook 16 G7 (community)
     ├── ricing/
     │   └── README.md                      # Ricing cheat sheet: aspect knobs, examples, checks
     └── virt/
@@ -244,8 +275,10 @@ nixos/
 3. **Static gate:** `nix eval .#nixosConfigurations.thinkbook.config.system.build.toplevel.drvPath`
 4. **Full build:** `nixos-rebuild build --flake .#thinkbook` (then `switch`)
 5. **Audio preset:** The ThinkBook Home Manager audio profile autoloads
-   `thinkbook-speakers-dolby-approximation-v1` on session start. The neutral
-   headphone preset is deployed for manual selection and is not autoloaded.
+   `thinkbook-speakers-dolby-music` (convolver, Dolby IRS) on session start.
+   `thinkbook-speakers-dolby-movie` and `thinkbook-speakers-enhanced` are
+   deployed for manual selection, as is `headphones-neutral` — select it
+   before using headphones.
 6. **Firmware:** `fwupdmgr refresh && fwupdmgr update` (manual, on demand).
 7. **LLM agents:** `opencode --version && grok --version`; auth is
    imperative (`opencode auth login`, grok login) — nothing declarative.
