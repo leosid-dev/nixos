@@ -1,9 +1,14 @@
 # modules/home/nautilus.nix — Nautilus file manager & Sushi previewer (HM-level).
 #
-# Provides: GNOME Files (Nautilus), thumbnailers, MIME associations, and dconf
-# defaults.
+# Provides: GNOME Files (Nautilus), Sushi (space-bar quick preview),
+# thumbnailers, MIME associations, and dconf defaults.
 # Gated by aspects.home.nautilus.enable.
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.aspects.home.nautilus;
 in
@@ -12,7 +17,10 @@ in
     enable = lib.mkEnableOption "Nautilus file manager";
 
     defaultView = lib.mkOption {
-      type = lib.types.enum [ "grid-view" "list-view" ];
+      type = lib.types.enum [
+        "grid-view"
+        "list-view"
+      ];
       default = "grid-view";
       description = "Default folder view style in Nautilus.";
     };
@@ -28,11 +36,10 @@ in
     # Nautilus must see both the GVFS volume monitors (including MTP) and the
     # dconf GIO backend. Keep this scoped to the file-manager persona rather
     # than adding it to every graphical session.
-    home.sessionVariables.GIO_EXTRA_MODULES =
-      lib.makeSearchPath "lib/gio/modules" [
-        pkgs.gvfs
-        pkgs.dconf.lib
-      ];
+    home.sessionVariables.GIO_EXTRA_MODULES = lib.makeSearchPath "lib/gio/modules" [
+      pkgs.gvfs
+      pkgs.dconf.lib
+    ];
 
     home.packages = with pkgs; [
       nautilus
