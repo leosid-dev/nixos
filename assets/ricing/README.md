@@ -3,9 +3,10 @@ Ricing cheat sheet — Niri, Noctalia, Greeter, Neovim, LLM agents
 Overview
 - This document explains the ricing knobs under `aspects.*` and gives quick
   examples for overriding them per-profile or per-host.
-- Canonical accent: `aspects.theme.accent`. Noctalia, Neovim (colorscheme),
-  Kitty (palette) and Niri (focus ring + workspace background) all read
-  from `aspects.theme.palette`.
+- Canonical accent: `aspects.theme.accent`. Noctalia, Kitty (palette) and
+  Niri (focus ring + workspace background) all read from
+  `aspects.theme.palette`. Neovim is a deliberate exception: a fixed
+  TokyoNight colorscheme (persona-level IDE look, not theme-driven).
 - Default fonts: `Inter` for graphical interfaces and `JetBrains Mono` for
   terminal applications, both from the pinned nixpkgs. The desktop profile
   selects both families explicitly under `aspects.theme.font`.
@@ -59,7 +60,7 @@ Example: change the theme mode (dark / light)
 
   aspects.theme.mode = "light";
 
-Example: switch the accent palette (drives Kitty + Neovim + Noctalia)
+Example: switch the accent palette (drives Kitty + Noctalia + Niri; Neovim stays TokyoNight)
 
   aspects.theme.accent = "catppuccin-mocha";
 
@@ -86,9 +87,10 @@ Neovim
 - Configured declaratively via nixvim (`modules/home/editor.nix`): LSP
   (nixd), treesitter, telescope, cmp, which-key, gitsigns. No runtime
   plugin manager, no downloads.
-- Colorscheme follows `aspects.theme.accent`: `monochrome` → mini-base16
-  grayscale (derived from `aspects.theme.palette.base16`),
-  `catppuccin-mocha` → catppuccin (mocha), `adwaita` → tokyonight.
+- Colorscheme is a fixed persona choice: TokyoNight (dark) — it does NOT
+  follow `aspects.theme.accent` or `mode` (see AGENTS.md rule 8: Neovim is
+  the documented palette exception). The editor inherits the terminal's
+  monospace font from the emulator it runs in.
 - Key mappings: `<leader>ff` find files, `<leader>fg` live grep,
   `<leader>fb` buffers, `<leader>fs` document symbols.
 
@@ -102,13 +104,18 @@ What the config files provide
   `aspects.home.niri.terminalCommand`, which defaults to the canonical
   `TERMINAL` session variable set by the terminal aspect.
 - Noctalia: `programs.noctalia.settings` receives the theme mode (from
-  `aspects.theme.mode`), the palette source (from `aspects.theme.accent`),
-  and the bar layout — macOS-style straight rectangle with internal capsule
-  groups: unlabeled workspace pills + running-app icons (taskbar) in the
-  desktop capsule left, date center, and one compact system-status capsule
-  (system monitor, power profile, battery glyph, session menu) right. The app
-  launcher floats at top-center of the screen. A custom monochrome palette
-  (m* Material schema) with dark and light variants ships with the module.
+  `aspects.theme.mode`), a custom palette emitted from
+  `aspects.theme.palette.noctalia` (driven by `aspects.theme.accent`, m*
+  Material schema with dark and light variants), and the bar layout — a
+  flat macOS-style top bar with three flush lanes: workspaces + taskbar
+  left, clock + notifications + privacy center, and a sysmon telemetry
+  capsule (CPU temp + RAM %, joined by the CPU package power widget when
+  `aspects.home.noctalia.cpuPower.enable` is on; members render denser than
+  the bar at 0.9x scale, left-click anywhere in it opens Control Center
+  System) followed by network,
+  bluetooth, volume, battery, tray and session right. The launcher is
+  keyboard-driven (Mod+D toggles it). Display density is host policy via
+  `aspects.home.noctalia.uiScale` (1.15 on the ThinkBook).
 - Kitty: palette derived from `aspects.theme.palette.terminal` in
   `modules/home/terminal.nix`; opacity/fontSize/padding/scrollback are
   sub-options under `aspects.home.terminal`. The module also sets the
@@ -116,9 +123,11 @@ What the config files provide
 - GTK/dconf: Adwaita theme always; monochrome accent also sets a slate
   libadwaita accent color.
 - Fonts: `aspects.theme.font` is the single source of truth — GTK/dconf
-  (UI), Noctalia (`shell.font_family`), and Kitty/Neovim (monospace) all
-  read it. The theme module installs the monospace package into the user's
-  fontconfig; the system fonts aspect installs the UI font for the greeter.
+  (UI), Noctalia (`shell.font_family`), and Kitty (monospace) read it.
+  Neovim inherits the monospace family from the terminal it runs in. The
+  theme module installs the monospace package into the user's fontconfig;
+  the system fonts aspect keeps a parallel greeter-only UI font default
+  (pre-login boundary).
 
 Verification (on a machine with Nix)
 - `nix eval .#nixosConfigurations.thinkbook.config.system.build.toplevel.drvPath`
@@ -131,9 +140,10 @@ Manual functional checks (on the target host)
   behavior, and window animations; test hotkeys (terminal spawn via
   Mod+Return, overview via Mod+O, workspace navigation, focus/move,
   launcher via Mod+D, and screenshot-to-clipboard).
-- Noctalia: check the sparse bar layout (workspaces/app icons left, clock
-  center, compact indicators + control center right), the launcher opening at
-  top-center, the theme mode, and that the palette matches
+- Noctalia: check the flat three-lane bar (workspaces + taskbar left,
+  clock + notifications + privacy center, sysmon capsule + network,
+  bluetooth, volume, battery, tray, session right), the launcher via
+  Mod+D, the theme mode, and that the palette matches
   `aspects.theme.accent`.
 - Neovim: open a `.nix` file, confirm nixd diagnostics and telescope
   keymaps work.

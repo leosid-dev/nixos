@@ -5,7 +5,6 @@
 # - Noctalia custom palette JSON (m* Material roles + terminal)
 # - Kitty terminal colors (foreground/background/cursor/selection/palette)
 # - Niri focus ring (active, inactive, workspace background)
-# - Neovim mini-base16 (base00..base0F grayscale ramp for monochrome)
 {
   monochrome = {
     dark = {
@@ -68,26 +67,6 @@
         };
       };
 
-      # Base16 scale for Neovim (mini-base16)
-      base16 = {
-        base00 = "#000000";
-        base01 = "#141414";
-        base02 = "#262626";
-        base03 = "#3d3d3d";
-        base04 = "#8c8c8c";
-        base05 = "#b3b3b3";
-        base06 = "#d6d6d6";
-        base07 = "#f5f5f5";
-        base08 = "#e0e0e0";
-        base09 = "#d0d0d0";
-        base0A = "#c4c4c4";
-        base0B = "#b8b8b8";
-        base0C = "#acacac";
-        base0D = "#a0a0a0";
-        base0E = "#949494";
-        base0F = "#888888";
-      };
-
       opacity = 1.0;
     };
     light = {
@@ -148,25 +127,6 @@
         };
       };
 
-      base16 = {
-        base00 = "#ffffff";
-        base01 = "#f0f0f0";
-        base02 = "#e0e0e0";
-        base03 = "#c4c4c4";
-        base04 = "#737373";
-        base05 = "#525252";
-        base06 = "#2e2e2e";
-        base07 = "#1a1a1a";
-        base08 = "#686868";
-        base09 = "#606060";
-        base0A = "#585858";
-        base0B = "#505050";
-        base0C = "#484848";
-        base0D = "#404040";
-        base0E = "#383838";
-        base0F = "#303030";
-      };
-
       opacity = 1.0;
     };
   };
@@ -187,8 +147,6 @@
       mOnSurfaceVariant = "#a6adc8";
       mOutline = "#45475a";
       mShadow = "#11111b";
-      mHover = "#45475a";
-      mOnHover = "#cdd6f4";
 
       focus = {
         active = "#89b4fa";
@@ -225,7 +183,6 @@
         };
       };
 
-      base16 = null;
       opacity = 0.95;
     };
     light = {
@@ -243,8 +200,6 @@
       mOnSurfaceVariant = "#6c6f85";
       mOutline = "#9ca0b0";
       mShadow = "#bcc0cc";
-      mHover = "#ccd0da";
-      mOnHover = "#4c4f69";
 
       focus = {
         active = "#1e66f5";
@@ -281,7 +236,6 @@
         };
       };
 
-      base16 = null;
       opacity = 0.95;
     };
   };
@@ -302,8 +256,6 @@
       mOnSurfaceVariant = "#c0bfbc";
       mOutline = "#4d4d4d";
       mShadow = "#121212";
-      mHover = "#383838";
-      mOnHover = "#f2f2f2";
 
       focus = {
         active = "#78aeed";
@@ -340,7 +292,6 @@
         };
       };
 
-      base16 = null;
       opacity = 0.95;
     };
     light = {
@@ -358,8 +309,6 @@
       mOnSurfaceVariant = "#5e5c64";
       mOutline = "#c0bfbc";
       mShadow = "#deddda";
-      mHover = "#deddda";
-      mOnHover = "#241f31";
 
       focus = {
         active = "#1c71d8";
@@ -396,7 +345,6 @@
         };
       };
 
-      base16 = null;
       opacity = 0.95;
     };
   };

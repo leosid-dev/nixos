@@ -18,7 +18,8 @@ in
         description = ''
           System UI font family name. Documented as greeter-only requirement:
           noctalia-greeter runs pre-login as the `greeter` user before Home
-          Manager fonts exist.
+          Manager fonts exist. Parallel to HM's `aspects.theme.font` (which
+          cannot reach pre-login); keep the defaults aligned manually.
         '';
       };
       package = lib.mkOption {

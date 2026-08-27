@@ -60,6 +60,9 @@ lib.mkHost {
         # OpenSSH server: off by default; enable after adding authorized keys below.
         ssh.enable = false;
         secrets.enable = true;
+        # This machine's sops identity key (NOT the standard ssh_host_* path).
+        # The age recipient in secrets/.sops.yaml is derived from its pubkey;
+        # WALKTHROUGH.md step 4 pre-generates it before install.
         secrets.sshKeyPaths = ["/etc/ssh/thinkbook_ed25519"];
 
         # KVM/QEMU work VMs (Ubuntu LTS) with a dedicated host-backed data share.

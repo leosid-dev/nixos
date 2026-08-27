@@ -143,7 +143,7 @@ sops-nix decrypts secrets with the **installed** system's host key
 
 ```bash
 mkdir -p /mnt/etc/ssh
-ssh-keygen -t ed25519 -f /mnt/etc/ssh/ssh_host_ed25519_key -N ""
+ssh-keygen -t ed25519 -f /mnt/etc/ssh/thinkbook_ed25519 -N ""
 ```
 
 `nixos-install` preserves these instead of generating new ones.
@@ -167,9 +167,9 @@ private, use a personal access token:
 cd /mnt/etc/nixos
 nix-shell -p sops ssh-to-age age mkpasswd
 
-# 1. Derive the age recipient from the host key generated in step 4
+# 1. Derive the age recipient from the sops identity key generated in step 4
 #    (-i converts a PUBLIC key; without it ssh-to-age expects a private key)
-ssh-to-age -i /mnt/etc/ssh/ssh_host_ed25519_key.pub
+ssh-to-age -i /mnt/etc/ssh/thinkbook_ed25519.pub
 
 # 2. Put that recipient into secrets/.sops.yaml (replace the commented
 #    example block):

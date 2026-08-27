@@ -9,10 +9,12 @@ host until it contains the encrypted `users/sid/password` value.
 
 Basic workflow
 
-1. Derive the host recipient from the target machine's SSH host key
-   (`-i` converts a *public* key to an age recipient):
+1. Derive the host recipient from the target machine's sops identity key —
+   the file declared in `aspects.secrets.sshKeyPaths` (on the ThinkBook:
+   `/etc/ssh/thinkbook_ed25519`). `-i` converts a *public* key to an age
+   recipient:
 
-       ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub
+       ssh-to-age -i /etc/ssh/thinkbook_ed25519.pub
 
 2. Put that recipient in the active `creation_rules` entry in
    `secrets/.sops.yaml`.

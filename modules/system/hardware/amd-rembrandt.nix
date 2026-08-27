@@ -40,6 +40,17 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # ── RAPL powercap readability ────────────────────────────────
+    # /sys/class/powercap/intel-rapl:0/energy_uj is 0400 root:root by default,
+    # so the Noctalia cpu-power plugin (running as user) gets Permission denied
+    # and shows "-- W". udev's MODE= only applies to device nodes and RAPL
+    # powercap devices are sysfs-only, so chmod via RUN+ on the device add
+    # event instead — fires per RAPL domain (package-0 and its core children),
+    # including re-triggers. Scoped to this SoC aspect, not global.
+    services.udev.extraRules = ''
+      SUBSYSTEM=="powercap", KERNEL=="intel-rapl:*", RUN+="${pkgs.coreutils}/bin/chmod 0444 /sys%p/energy_uj"
+    '';
+
     # ── CPU Microcode & Driver Tuning ──────────────────────────────
     hardware.cpu.amd.updateMicrocode = lib.mkDefault true;
 

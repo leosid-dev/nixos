@@ -3,7 +3,7 @@
 # Ricing knobs:
 # - aspects.home.niri.*      : compositor layout/hotkeys/gaps/corners/animations
 # - aspects.home.terminal.*  : Kitty opacity/fontSize/padding/scrollback
-# - aspects.home.noctalia.*  : status modules, prompt style, theme sync
+# - aspects.home.noctalia.*  : uiScale, cpu-power plugin (palette/bar follow aspects.theme)
 # - aspects.theme.*          : accent, mode, font, cursor, palette
 # - aspects.home.agents.*    : which LLM coding agents to install
 # (The system greeter is configured by the desktop aspect, not here.)
@@ -13,10 +13,10 @@
 # users.
 #
 # Always-on with desktop profile:
-#   - shell, editor, git, niri, wayland
+#   - shell, editor, git, packages, niri, wayland
 #
 # Option-gated (explicit persona selection):
-#   - terminal, theme, noctalia, audio, agents
+#   - terminal, theme, noctalia, nautilus, audio, agents
 { config, lib, pkgs, ... }:
 {
   imports = [
@@ -30,6 +30,7 @@
     ../modules/home/terminal.nix
     ../modules/home/theme.nix
     ../modules/home/noctalia.nix
+    ../modules/home/noctalia-cpu-power.nix
     ../modules/home/audio.nix
     ../modules/home/agents.nix
   ];

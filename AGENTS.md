@@ -41,9 +41,11 @@ If they conflict, AGENTS.md wins; STATE.md is updated to match after a refactor.
    - `TERMINAL`         → `programs.kitty` (HM sets it)
    - keymap             → `aspects.locale.keyMap` (console + greeter share)
    - font family/cursor → `aspects.theme.font` / `aspects.theme.cursor`
-   - accent palette     → `aspects.theme.palette` (derived from canonical
-                          `aspects.theme.accent`; Noctalia, Kitty, Neovim,
-                          and Niri focus-ring/background all read it)
+    - accent palette     → `aspects.theme.palette` (derived from canonical
+                           `aspects.theme.accent`; Noctalia, Kitty, and
+                           Niri focus-ring/background all read it — Neovim
+                           is a deliberate exception with a fixed TokyoNight
+                           colorscheme)
    - cachix key         → `modules/system/core/nix.nix`
 9. **Compositor + shell.** Niri (unstable) is the Wayland compositor;
    Noctalia v5 shell via Home Manager; noctalia-greeter via greetd (system
@@ -60,12 +62,14 @@ variation**:
 |---|---|---|
 | `shell.nix`     | always-on | CLI tools, no variation |
 | `editor.nix`    | always-on | Editor choice is profile-level |
-| `git.nix`       | always-on | Git config is profile-level |
+| `git.nix`       | always-on | Git config is profile-level (identity in host user data) |
+| `packages.nix`  | always-on | Shared user applications, no variation |
 | `niri.nix`      | always-on (with desktop profile) | Compositor is required |
 | `wayland.nix`   | always-on (with desktop profile) | Required for the session |
 | `terminal.nix`  | `aspects.home.terminal.enable`  | Terminal choice varies |
 | `theme.nix`     | `aspects.home.theme.enable`     | Theme choice varies |
 | `noctalia.nix`  | `aspects.home.noctalia.enable`  | Shell choice varies |
+| `nautilus.nix`  | `aspects.home.nautilus.enable`  | File-manager choice varies |
 | `audio.nix`     | `aspects.home.audio.enable`     | DSP choice varies (presets option too) |
 | `agents.nix`    | `aspects.home.agents.enable`    | Agent selection varies (`packages` option) |
 

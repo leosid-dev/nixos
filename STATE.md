@@ -1,9 +1,22 @@
 # STATE.md — Architecture, Design Principles & Current State
 
-> Last updated: 2026-08-18 · macOS-style bar redesign (flat three-lane layout:
-> workspaces + taskbar left, date+time center, tray + control-center +
-> notifications right; capsule groups removed; Noctalia window size now a
-> niri aspect knob)
+> Last updated: 2026-08-27 · cpu-power widget hardened to production grade
+> (Luau sampler: source pinning with baseline reset, paired max-range index,
+> suspend/clock-step discontinuity guards, maxWatts as sanity gate instead of
+> display clamp, tooltip enriched via systemStats() to match the sibling
+> sysmon widgets; Nix: eval-time assertions for source presence + parallel
+> path lists, charset-constrained path/glyph types) + sysmon capsule members
+> scaled 0.9x bar scale; prior: noctalia contract sweep (display density
+> externalized as aspects.home.noctalia.uiScale; mkForce service overrides
+> replaced by wayland.systemd.target = niri.service; settings equal to
+> upstream defaults pruned, incl. the duplicated bar font and the whole
+> system.monitor block; dead mHover/mOnHover palette tokens removed;
+> ricing cheat sheet bar/palette descriptions fixed) + cpu-power fix
+> (inert udev MODE rule replaced by event-driven chmod — RAPL devices are
+> sysfs-only; cpuPower gained pollIntervalMs and maxWatts tunables;
+> sysmon capsule left-click → Control Center System via member defaults /
+> plugin.toml [widget.actions]; capsule membership owned solely by
+> noctalia.nix, cpu-power module is deploy-only)
 
 ---
 
@@ -36,7 +49,7 @@ System, hardware, user, and home modules are organised as **aspects** — self-c
 All helpers in `lib/` are pure functions with no side effects:
 - **`channels`** — builds `{ stable, unstable }` pkgs sets for a given system + overlays + config. The `unstable` set is attached to `stable` through a **real overlay** (`final: prev: { inherit unstable; }`) at construction. Unfree/licensing policy is passed in as data by each host; never embedded.
 - **`mkHost`** — constructs a `nixosSystem` value from `{ system, channels, users, modules }`, auto-wiring Home Manager, sops-nix, and the noctalia-greeter NixOS modules (each inert until configured).
-- **`palettes`** — pure color token table (accent → mode → palette record) consumed across Noctalia, Kitty, Niri, and Neovim.
+- **`palettes`** — pure color token table (accent → mode → palette record) consumed across Noctalia, Kitty, and Niri. Neovim is a deliberate exception with a fixed TokyoNight colorscheme.
 
 ### 5. Stable/Unstable Version Pinning
 - `nixpkgs` → `nixos-26.05` (stable, primary)
@@ -63,8 +76,8 @@ User-space configuration flows through Home Manager, integrated as a NixOS modul
 
 ### 8. Hybrid HM Gating
 Home-Manager modules are gated only when they have real per-persona variation:
-- **Always-on with desktop profile:** `shell`, `editor`, `git`, `niri`, `wayland`
-- **Gated via `aspects.home.*`:** `terminal`, `theme`, `noctalia`, `audio`, `agents`
+- **Always-on with desktop profile:** `shell`, `editor`, `git`, `packages`, `niri`, `wayland`
+- **Gated via `aspects.home.*`:** `terminal`, `theme`, `noctalia`, `nautilus`, `audio`, `agents`
 
 A persona is a profile; `profiles/desktop.nix` is the only one today.
 
@@ -74,7 +87,7 @@ A persona is a profile; `profiles/desktop.nix` is the only one today.
 
 ```
 nixos/
-├── flake.nix                              # Inputs, outputs, checks, agnostic wiring
+├── flake.nix                              # Inputs, outputs, agnostic wiring
 ├── flake.lock                             # Pinned dependency hashes (committed)
 │
 ├── lib/                                   # Pure helper functions & data
@@ -114,10 +127,9 @@ nixos/
 │   │   │   ├── packages.nix               # Minimal CLI tools + nix-ld
 │   │   │   └── secrets.nix                # sops-nix (aspects.secrets.{enable,file,sshKeyPaths})
 │   │   ├── desktop/                       # Wayland desktop (aspects.desktop.enable)
-│   │   │   ├── default.nix                # Index (niri, portals, login, bluetooth, browser)
+│   │   │   ├── default.nix                # Index (niri, portals, login, browser)
 │   │   │   ├── niri.nix                   # Niri compositor + uniform Wayland sessionVariables (SDL fallback)
-│   │   │   ├── portals.nix                # XDG desktop portals (GTK fallback) + dconf backend
-│   │   │   ├── bluetooth.nix              # Blueman (gated on desktop + network.bluetooth)
+│   │   │   ├── portals.nix                # XDG desktop portals (GTK fallback) + dconf + Secret portal provider
 │   │   │   ├── browser.nix                # Firefox (system-level, native Wayland)
 │   │   │   └── login.nix                  # noctalia-greeter (reads aspects.locale.keyMap)
 │   │   ├── virtualisation/                # KVM/QEMU virtualisation aspect
@@ -134,19 +146,25 @@ nixos/
 │   │
 │   └── home/                              # Home Manager modules
 │       ├── shell.nix                      # Zsh + fzf + eza + bat (always-on; flakePath required)
-│       ├── editor.nix                     # Neovim via nixvim (always-on, sets EDITOR/VISUAL, base16 palette)
-│       ├── git.nix                        # Git + Delta + lazygit (always-on)
+│       ├── editor.nix                     # Neovim via nixvim (always-on, sets EDITOR/VISUAL, fixed TokyoNight)
+│       ├── git.nix                        # Git + Delta + lazygit (always-on; identity in host user data)
+│       ├── packages.nix                   # Shared user applications (always-on; vlc)
 │       ├── niri.nix                       # Niri user config.kdl (always-on with desktop profile, palette-derived rings)
 │       ├── wayland.nix                    # grim/slurp/wl-clipboard/xwayland-satellite/qt-wayland
 │       ├── terminal.nix                   # Kitty, structured palette, sets TERMINAL; opacity/fontSize/padding knobs
-│       ├── theme.nix                      # GTK/QT/cursor/dconf (accent enum, mode, font defaults, palette)
-│       ├── noctalia.nix                   # Noctalia v5 shell (m* custom palette dark+light, reads theme.mode)
+│       ├── theme.nix                      # GTK/QT/cursor/dconf (accent enum, mode, font defaults, palette + noctalia material)
+│       ├── noctalia.nix                   # Noctalia v5 shell (uiScale, bar layout + sole
+│       │                                  #   sysmon capsule_group writer, custom palette)
+│       ├── noctalia-cpu-power.nix         # CPU power plugin deploy only (RAPL/hwmon paths,
+│       │                                  #   eval assertions; no bar layout overrides)
+│       ├── nautilus.nix                   # Nautilus file manager + dconf defaults (aspects.home.nautilus)
 │       ├── audio.nix                      # Generic EasyEffects DSP service + preset deployment
 │       └── agents.nix                     # LLM agents from llm-agents.nix (packages default [])
 │
 ├── profiles/
 │   ├── desktop.nix                        # Reusable desktop persona and generic HM aspects
-│   └── thinkbook-audio.nix                # ThinkBook speaker/headphone preset policy
+│   ├── thinkbook-audio.nix                # ThinkBook speaker/headphone preset policy
+│   └── thinkbook-noctalia.nix             # ThinkBook Noctalia policy (uiScale, CPU power RAPL paths)
 │
 └── assets/
     ├── easyeffects/
@@ -217,7 +235,7 @@ nixos/
 > Full clean-slate install procedure: `WALKTHROUGH.md`.
 
 1. **First switch (one-time, on the ThinkBook):**
-   - `ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub`
+   - `ssh-to-age -i /etc/ssh/thinkbook_ed25519.pub`
    - add the derived age recipient to an active `creation_rules` entry in
      `secrets/.sops.yaml`
    - `sops secrets/secrets.yaml` → set `users/sid/password` to
@@ -237,9 +255,12 @@ nixos/
    add the virtiofs data share from `/var/lib/libvirt/shares/ubuntu`, and
    verify the guest mount and `vulkaninfo` (Venus).
 9. **Visual:** `niri validate` against the generated config, then check
-   the bezier overshoot/settle, radius-4 corners, grayscale focus ring on
-   true-black background, and the flat macOS-style bar: workspaces + taskbar
-   left, date+time center, tray + control-center + notifications right.
+    the bezier overshoot/settle, radius-8 corners, grayscale focus ring on
+    true-black background, and the flat macOS-style bar: workspaces + taskbar
+    left, clock + notifications + privacy center, sysmon capsule (cpu_temp +
+    ram_pct, + cpu_power plugin; members at 0.9x bar scale; left-click →
+    Control Center System) -> spacer
+   -> network, bluetooth, volume, battery, tray, session right.
 
 ---
 
@@ -253,6 +274,11 @@ nixos/
 | `aspects.sound.jack.enable` | sound.nix | `false` | JACK audio emulation layer via PipeWire |
 | `aspects.hardware.network.bluetooth.enable` | network.nix | `false` | Bluetooth hardware controller and daemon |
 | `aspects.hardware.usb.thunderbolt.enable` | usb.nix | `false` | Thunderbolt / USB4 router and bolt daemon |
+| `aspects.home.noctalia.uiScale` | home/noctalia.nix | `1.0` | UI scale multiplier (ui_scale + bar scale); 1.15 on ThinkBook |
+| `aspects.home.noctalia.cpuPower.enable` | home/noctalia-cpu-power.nix | `false` | CPU package power widget (RAPL/hwmon paths are host data) |
+| `aspects.home.noctalia.cpuPower.pollIntervalMs` | home/noctalia-cpu-power.nix | `2000` | Plugin sampling cadence (Δenergy/Δt); also the discontinuity window (`max(4x, 10s)` → drop + re-baseline) |
+| `aspects.home.noctalia.cpuPower.maxWatts` | home/noctalia-cpu-power.nix | `500` | Sanity gate: higher readings are dropped and re-baselined, never clamped for display |
+| `aspects.home.noctalia.cpuPower.glyph` | home/noctalia-cpu-power.nix | `"bolt"` | Material glyph beside the watt reading |
 | `aspects.home.audio.graphViewer.enable` | home/audio.nix | `false` | PipeWire graph viewer tool (crosspipe) |
 | `aspects.virtualisation.ksm.enable` | virt/features.nix | `false` | Memory deduplication (off on laptops to save CPU/battery) |
 | `aspects.virtualisation.swtpm.enable` | virt/features.nix | `false` | Emulated TPM 2.0 |

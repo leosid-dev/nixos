@@ -7,6 +7,7 @@
     imports = [
       ../../profiles/desktop.nix
       ../../profiles/thinkbook-audio.nix
+      ../../profiles/thinkbook-noctalia.nix
     ];
 
     # Home Manager itself must be added to the user's profile so the
@@ -15,6 +16,12 @@
 
     # Flake checkout path for the `rebuild` shell alias (host data)
     aspects.home.shell.flakePath = "/home/sid/nixos";
+
+    # Commit identity is persona data, owned here instead of git.nix
+    programs.git.settings = {
+      user.name = "SIDAHRTH P M";
+      user.email = "beastsid2429@gmail.com";
+    };
 
     # The built-in panel is 1920x1200 at 60 Hz. Pin the native mode and run
     # at 100% scaling: one logical pixel per physical pixel, no fractional

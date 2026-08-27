@@ -16,10 +16,9 @@
     ];
 
     # Settings + aliases (HM >= 26.05: `settings` replaces `extraConfig`
-    # and `aliases`).
+    # and `aliases`). Commit identity (user.name/email) is persona data and
+    # lives in hosts/<host>/users.nix — this module stays persona-free.
     settings = {
-      user.name = "SIDAHRTH P M";
-      user.email = "beastsid2429@gmail.com";
       init.defaultBranch = "main";
       pull.rebase = true;
       push.autoSetupRemote = true;

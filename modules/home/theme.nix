@@ -13,6 +13,28 @@ let
   theme = config.aspects.theme;
   palettes = import ../../lib/palettes.nix;
   selected = palettes.${theme.accent}.${theme.mode};
+
+  # Noctalia material extraction: m* roles + terminal, without mHover/mOnHover.
+  # The runtime derives hover = tertiary, so shipping hover would be dead data.
+  extractNoctalia = p: {
+    inherit (p)
+      mPrimary
+      mOnPrimary
+      mSecondary
+      mOnSecondary
+      mTertiary
+      mOnTertiary
+      mError
+      mOnError
+      mSurface
+      mOnSurface
+      mSurfaceVariant
+      mOnSurfaceVariant
+      mOutline
+      mShadow
+      terminal
+      ;
+  };
 in
 {
   options.aspects.home.theme = {
@@ -24,7 +46,11 @@ in
       name = lib.mkOption {
         type = lib.types.str;
         default = "Inter";
-        description = "Primary UI font family name (shared with greeter and desktop UI).";
+        description = ''
+          Primary UI font family name. The pre-login greeter cannot read
+          Home Manager options; the system fonts aspect keeps a parallel
+          `aspects.fonts.uiFont` for it — keep the two defaults aligned.
+        '';
       };
       package = lib.mkOption {
         type = lib.types.package;
@@ -91,6 +117,10 @@ in
       description = "Theme mode (dark or light surface colors).";
     };
 
+    # Option surface over lib/palettes.nix. The active-mode surface (focus/
+    # terminal/etc.) is derived from selected; the noctalia sub-tree exposes
+    # the full dark+light Material payload so Noctalia can be driven from the
+    # canonical accent without importing palettes.nix directly.
     palette = {
       background = lib.mkOption {
         type = lib.types.str;
@@ -173,15 +203,28 @@ in
           description = "Terminal ANSI 8 bright colors.";
         };
       };
-      base16 = lib.mkOption {
-        type = lib.types.nullOr (lib.types.attrsOf lib.types.str);
-        default = selected.base16;
-        description = "Base16 color palette mapping (base00..base0F). Defined for monochrome; null for others.";
-      };
       opacity = lib.mkOption {
         type = lib.types.float;
         default = selected.opacity;
         description = "Terminal window background opacity.";
+      };
+
+      # Noctalia material payload: dark+light variants for the selected accent.
+      # Consumed by modules/home/noctalia.nix to generate custom palettes so
+      # every accent is available as a custom palette, not only monochrome.
+      noctalia = {
+        dark = lib.mkOption {
+          type = lib.types.attrs;
+          default = extractNoctalia palettes.${theme.accent}.dark;
+          defaultText = lib.literalExpression "extractNoctalia palettes.\${config.aspects.theme.accent}.dark";
+          description = "Noctalia Material roles + terminal for dark mode (m* + terminal).";
+        };
+        light = lib.mkOption {
+          type = lib.types.attrs;
+          default = extractNoctalia palettes.${theme.accent}.light;
+          defaultText = lib.literalExpression "extractNoctalia palettes.\${config.aspects.theme.accent}.light";
+          description = "Noctalia Material roles + terminal for light mode (m* + terminal).";
+        };
       };
     };
   };

@@ -9,16 +9,16 @@ let
 
   loadPresetScript = pkgs.writeShellScript "easyeffects-load-preset" ''
       i=0
-      while [ $i -lt 30 ]; do
-        ${lib.optionalString cfg.service.headless.enable "QT_QPA_PLATFORM=offscreen"} ${pkgs.easyeffects}/bin/easyeffects --load-preset "$1" && {
-          ${lib.optionalString cfg.startup.disableBypass "${lib.optionalString cfg.service.headless.enable "QT_QPA_PLATFORM=offscreen"} ${pkgs.easyeffects}/bin/easyeffects --bypass 2 || true"}
+      while [ $i -lt 15 ]; do
+        if ${lib.optionalString cfg.service.headless.enable "QT_QPA_PLATFORM=offscreen"} ${pkgs.coreutils}/bin/timeout 3s ${pkgs.easyeffects}/bin/easyeffects --load-preset "$1" 2>/dev/null; then
+          ${lib.optionalString cfg.startup.disableBypass "${lib.optionalString cfg.service.headless.enable "QT_QPA_PLATFORM=offscreen"} ${pkgs.coreutils}/bin/timeout 3s ${pkgs.easyeffects}/bin/easyeffects --bypass 2 2>/dev/null || true"}
           exit 0
-        }
+        fi
         sleep 1
         i=$((i + 1))
       done
       echo "easyeffects-load: preset '$1' did not load in time" >&2
-      exit 1
+      exit 0
     '';
 
   loaderService = {
@@ -30,6 +30,8 @@ let
     };
     Service = {
       Type = "oneshot";
+      RemainAfterExit = true;
+      TimeoutStartSec = "25s";
       ExecStart = "${loadPresetScript} ${lib.escapeShellArg cfg.activePreset}";
     };
     Install.WantedBy = [ "graphical-session.target" ];
@@ -87,8 +89,8 @@ in
       pkgs.easyeffects
     ] ++ lib.optional cfg.graphViewer.enable pkgs.crosspipe;
 
-    # Deploy each preset under EasyEffects' standard directory layout
-    xdg.configFile = lib.listToAttrs (map
+    # Deploy each preset under EasyEffects' standard directory layout ($XDG_DATA_HOME)
+    xdg.dataFile = lib.listToAttrs (map
       (p: {
         name = "easyeffects/output/${p.name}.json";
         value = { source = p.file; };

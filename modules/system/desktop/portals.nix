@@ -27,6 +27,11 @@
       };
     };
 
+    # Provider for the Secret portal routed above (password storage for
+    # apps). Routing a portal with no provider installed is dead config —
+    # keep the two in lockstep.
+    environment.systemPackages = [ pkgs.gnome-keyring ];
+
     # dconf backend — required for Home Manager `dconf.settings` writes
     # (theme.nix) to actually apply.
     programs.dconf.enable = true;

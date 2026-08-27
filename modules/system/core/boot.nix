@@ -17,10 +17,9 @@ in
     boot.loader = {
       systemd-boot = {
         enable = true;
-        # Keep the last 3 generations only — /boot usage stays bounded
-        # (the EFI partition is shared with Windows). Also the single
-        # source of truth for store-level generation pruning (see the
-        # generation-limit service in nix.nix).
+        # Keep the last 3 generations only — keeps /boot usage bounded and is
+        # the single source of truth for store-level generation pruning (see
+        # the generation-limit service in nix.nix).
         configurationLimit = 3;
       };
       efi.canTouchEfiVariables = true;

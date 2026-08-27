@@ -5,13 +5,21 @@
 # which happens only when aspects.home.noctalia.enable is on.
 #
 # Visual design (keys verified against the upstream config schema):
-# - Bar: macOS-style menu bar. Left: workspace pills + active app name/title.
-#   Center: date and time. Right: dynamic status menus (media, tray, privacy,
-#   network, bluetooth, volume, battery), control center, notification center.
-#   Launcher remains keyboard-driven.
-# - Theme: custom monochrome palette (m* Material schema) anchored at true
-#   black (LCD), with full dark and light variants from lib/palettes.nix.
-#   Mode follows aspects.theme.mode directly.
+# - Bar: macOS-style menu bar. Left: workspace pills + taskbar.
+#   Center: clock, notifications, privacy.
+#   Right: telemetry capsule (cpu_temp + ram_pct; + cpu_power when
+#   aspects.home.noctalia.cpuPower.enable — membership owned here, plugin
+#   deploy in noctalia-cpu-power.nix) -> spacer -> network, bluetooth,
+#   volume, battery, tray, session. Capsule members render at 0.9x bar
+#   scale and share one left-click (Control Center System).
+#   Launcher remains keyboard-driven. Privacy sits in center after notifications.
+# - Theme: custom palette derived from aspects.theme.palette.noctalia
+#   (single source of truth via aspects.theme.accent). Mode follows
+#   aspects.theme.mode directly. No duplication: only the selected accent's
+#   dark+light palette is emitted, bound to theme.custom_palette.
+# - Only settings that deviate from upstream defaults are declared here.
+#   Display density (aspects.home.noctalia.uiScale) is host policy, not
+#   shell intent, so it is an option with the inert upstream default.
 {
   config,
   lib,
@@ -21,159 +29,135 @@
 let
   cfg = config.aspects.home.noctalia;
   theme = config.aspects.theme;
-  palettes = import ../../lib/palettes.nix;
 
-  # Palette source selection keyed by the global accent.
-  noctaliaTheme =
-    if theme.accent == "monochrome" then
-      {
-        source = "custom";
-        custom_palette = "monochrome";
-      }
-    else if theme.accent == "catppuccin-mocha" then
-      {
-        source = "builtin";
-        builtin = "Catppuccin";
-      }
-    else
-      {
-        source = "builtin";
-        builtin = "Noctalia";
-      };
-
-  # Extract Noctalia v5 custom palette schema (m* Material roles + terminal)
-  # from lib/palettes.nix. mHover/mOnHover are omitted on purpose: the runtime
-  # hardcodes hover = tertiary (mapGeneratedPaletteMode), so shipping them
-  # would be dead configuration.
-  extractNoctalia = p: {
-    inherit (p)
-      mPrimary
-      mOnPrimary
-      mSecondary
-      mOnSecondary
-      mTertiary
-      mOnTertiary
-      mError
-      mOnError
-      mSurface
-      mOnSurface
-      mSurfaceVariant
-      mOnSurfaceVariant
-      mOutline
-      mShadow
-      terminal
-      ;
-  };
-
-  monochromePalette = {
-    dark = extractNoctalia palettes.monochrome.dark;
-    light = extractNoctalia palettes.monochrome.light;
-  };
+  # Telemetry capsule presentation: members render denser than the rest of
+  # the bar (content scale relative to bar.main.scale). Applies to every
+  # sysmon capsule member, including the plugin member when cpuPower is on.
+  sysmonCapsuleScale = 0.9;
 in
 {
   imports = [ noctalia.homeModules.default ];
 
   options.aspects.home.noctalia = {
     enable = lib.mkEnableOption "Noctalia v5 shell";
+
+    uiScale = lib.mkOption {
+      type = lib.types.float;
+      default = 1.0;
+      description = ''
+        UI scale multiplier, applied to accessibility.ui_scale and mirrored
+        to bar.main.scale. Display-density policy owned by the host (e.g.
+        1.15 on a 16" 1920x1200 panel running the compositor at scale 1.0).
+        1.0 is the upstream default.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
+    # The upstream unit binds After/PartOf/WantedBy to wayland.systemd.target.
+    # Point it at niri.service (started by Niri's built-in systemd activation)
+    # instead of graphical-session.target: the latter waits for
+    # xdg-desktop-autostart.target, whose portal probing can delay shell
+    # startup by tens of seconds. niri.service comes up as soon as the
+    # compositor is ready.
+    wayland.systemd.target = "niri.service";
+
     programs.noctalia = {
       enable = true;
       systemd.enable = true;
 
-      # Installed to ~/.config/noctalia/palettes/monochrome.json; inert
-      # unless the accent selects it.
-      customPalettes.monochrome = monochromePalette;
+      # Single source of truth: emit the selected accent as a custom palette.
+      # The palette data comes from aspects.theme.palette.noctalia (derived
+      # from lib/palettes.nix), so adding a new accent only touches
+      # lib/palettes.nix + theme.nix — no duplication here.
+      customPalettes.${theme.accent} = {
+        dark = theme.palette.noctalia.dark;
+        light = theme.palette.noctalia.light;
+      };
 
       settings = {
-        accessibility = {
-          ui_scale = 1.15;
-        };
+        accessibility.ui_scale = cfg.uiScale;
 
         shell = {
           # Font follows aspects.theme.font (single source of truth).
           font_family = theme.font.name;
+          clipboard_enabled = false;
+          offline_mode = true;
+
           # Noctalia's native polkit auth agent owns privilege prompts
           # (virt-manager, NetworkManager, package managers), theme-matched
           # and placed per shell.panel.polkit_placement.
           polkit_agent = true;
           panel = {
-            transparency_mode = "solid"; # solid | soft | glass; controls floating panel opacity and card translucency
             borders = false; # outline on floating panel surfaces
             shadow = false; # cast the global [shell.shadow] from panel surfaces
-            list_item_background = false; # filled rounded background behind launcher and clipboard list items
-            floating_layer = "overlay"; # overlay | top; applies to floating interactive panels
             launcher_placement = "attached"; # attached | floating
             clipboard_placement = "attached"; # attached | floating
-            control_center_placement = "attached"; # attached | floating
-            wallpaper_placement = "attached"; # attached | floating
             session_placement = "floating"; # attached | floating
-            polkit_placement = "floating"; # attached | floating
-            #launcher_position = "center"; # auto | center | top_left | … (floating only)
-            #clipboard_position = "auto"; # auto | center | top_left | … (floating only)
-            polkit_position = "center"; # auto | center | top_left | … (floating only)
-            floating_offset = 8; # px gap between a floating panel and the bar edge
-            open_near_click_control_center = true; # attached/floating: follow the bar click instead of bar-center
-            open_near_click_launcher = false; # attached/floating: follow the bar click instead of bar-center
-            open_near_click_clipboard = false; # attached/floating: follow the bar click instead of bar-center
-            open_near_click_wallpaper = false; # attached/floating: follow the bar click instead of bar-center
-            open_near_click_session = false; # attached/floating: follow the bar click instead of bar-center
+            open_near_click_control_center = true; # follow the bar click instead of bar-center
           };
-          animation = {
-            enabled = true;
-            speed = 1.25;
+          launcher = {
+            categories = false;
+            fetch_exchange_rates = false;
           };
+          animation.speed = 1.25;
         };
 
-        theme = noctaliaTheme // {
+        hot_corners.enabled = false;
+        theme = {
+          source = "custom";
+          custom_palette = theme.accent;
           mode = theme.mode;
           pure_black_dark = true; # keep dark surfaces at true black (LCD)
         };
 
-        # macOS-style bar: flat, flush, three lanes replicating macOS HIG.
+        # macOS-style bar: flat, flush, three lanes.
+        # Left: workspaces + taskbar. Center: clock + notifications + privacy.
+        # Right: group:sysmon -> spacer -> network, bluetooth, volume, battery,
+        # tray, session. This module is the sole capsule_group writer: when
+        # aspects.home.noctalia.cpuPower.enable is on, local/cpu-power:cpu_power
+        # is prepended (plugin deploy lives in noctalia-cpu-power.nix).
+        # Capsule left-click opens Control Center System (upstream sysmon
+        # default; plugin declares the same via plugin.toml [widget.actions]).
+        # Bar widgets inherit shell.font_family; no bar-level font needed.
         bar.main = {
-          position = "top";
-          thickness = 34;
-          scale = 1.15;
+          scale = cfg.uiScale;
           padding = 12;
-          widget_spacing = 14;
+          widget_spacing = 16;
           radius = 0;
           margin_ends = 0;
           margin_edge = 0;
-          background_opacity = 1.0;
-          border_width = 0;
           shadow = false;
-          capsule = false;
-          reserve_space = true;
-          font_weight = 500;
-          font_family = theme.font.name;
 
           start = [
             "workspaces"
-            "active_window"
+            "spacer"
+            "taskbar"
           ];
-          center = [ "clock" ];
-          end = [
-            "media"
-            "tray"
+          center = [
+            "clock"
+            "notifications"
             "privacy"
+          ];
+          end = [
+            "group:sysmon"
+            "spacer"
             "network"
             "bluetooth"
             "volume"
             "battery"
-            "control-center"
-            "notifications"
+            "tray"
+            "session"
           ];
-        };
-
-        system.monitor = {
-          enabled = true;
-          cpu_poll_seconds = 2.0;
-          gpu_poll_seconds = 5.0;
-          memory_poll_seconds = 2.0;
-          network_poll_seconds = 3.0;
-          disk_poll_seconds = 10.0;
+          capsule_group = [
+            {
+              id = "sysmon";
+              members = lib.optionals cfg.cpuPower.enable [ "local/cpu-power:cpu_power" ] ++ [
+                "cpu_temp"
+                "ram_used"
+              ];
+            }
+          ];
         };
 
         control_center = {
@@ -182,76 +166,104 @@ in
           show_shortcut_labels = false;
         };
 
-        widget.workspaces = {
-          style = "minimal";
-          show_labels = false;
-          focused_color = "primary";
-          occupied_color = "secondary";
-          empty_color = "surface_variant";
-        };
-        widget.active_window = {
-          display = "icon_and_text";
-          title_scroll = "on_hover";
-          max_length = 300.0;
-          show_empty_label = false;
-        };
-        widget.clock = {
-          format = "{:%a %b %d  %H:%M}";
-          tooltip_format = "{:%A, %B %d, %Y}";
-        };
-        widget.media = {
-          hide_when_no_media = true;
-          album_art_only = false;
-          hide_album_art = false;
-          hide_artist = false;
-          art_size = 18.0;
-          max_length = 180.0;
-          title_scroll = "on_hover";
-        };
-        widget.tray = {
-          hide_passive = true;
-          drawer = true;
-        };
-        widget.privacy = {
-          hide_inactive = true;
-        };
-        widget.network = {
-          scale = 1.1;
-          show_label = false;
-          vpn_status = "replace";
-        };
-        widget.bluetooth = {
-          show_label = false;
-          hide_when_no_connected_device = true;
-        };
-        widget.volume = {
-          show_label = false;
-        };
-        widget.battery = {
-          scale = 1.1;
-          display_mode = "glyph";
-          show_label = false;
-          label_content = "rate";
-          hide_when_full = false;
-          hide_when_plugged = false;
-        };
-        widget.control-center = {
-          glyph = "adjustments-horizontal";
-        };
-        widget.notifications = {
-          hide_when_no_unread = false;
+        # Telemetry capsule members share one presentation: content at
+        # sysmonCapsuleScale, and one left-click action across the capsule
+        # (sysmon type default; the plugin member declares the same via
+        # plugin.toml [widget.actions] — capsule-level actions do not exist
+        # upstream). The plugin member gets its scale only when cpuPower is
+        # on, mirroring the capsule membership above.
+        widget = {
+          workspaces = {
+            style = "minimal";
+            show_labels = true;
+            focused_color = "primary";
+            occupied_color = "secondary";
+            empty_color = "surface_variant";
+          };
+          taskbar = {
+            icon_scale = cfg.uiScale;
+            item_spacing = 8;
+            group_by_workspace = false;
+            show_all_outputs = true;
+            only_active_workspace = false;
+            show_workspace_label = false;
+            hide_empty_workspaces = true;
+            show_active_indicator = true;
+            active_indicator_color = "primary";
+            active_opacity = 1.0;
+            inactive_opacity = 0.7;
+            focused_color = "primary";
+            occupied_color = "secondary";
+            empty_color = "secondary";
+            urgent_color = "error";
+          };
+          clock = {
+            format = "{:%a %b %d  %H:%M}";
+            tooltip_format = "{:%A, %B %d, %Y}";
+          };
+          tray = {
+            hide_passive = true;
+            drawer = true;
+          };
+          privacy = {
+            hide_inactive = true;
+          };
+          network = {
+            scale = cfg.uiScale;
+            show_label = false;
+            vpn_status = "replace";
+          };
+          bluetooth = {
+            show_label = false;
+            hide_when_no_connected_device = false;
+          };
+          volume = {
+            show_label = false;
+          };
+          battery = {
+            scale = cfg.uiScale;
+            display_mode = "glyph";
+            show_label = false;
+            label_content = "rate";
+            hide_when_full = false;
+            hide_when_plugged = false;
+          };
+          notifications = {
+            hide_when_no_unread = false;
+          };
+          spacer = {
+            type = "spacer";
+            length = 32;
+          };
+          spacer_64 = {
+            type = "spacer";
+            length = 64;
+          };
+          cpu_temp = {
+            type = "sysmon";
+            stat = "cpu_temp";
+            visualization = "none";
+            show_value = true;
+            show_glyph = true;
+            label_show_units = true;
+            scale = sysmonCapsuleScale;
+          };
+          ram_used = {
+            type = "sysmon";
+            stat = "ram_used";
+            visualization = "none";
+            show_value = true;
+            show_glyph = false;
+            label_show_units = true;
+            scale = sysmonCapsuleScale;
+          };
+        }
+        // lib.optionalAttrs cfg.cpuPower.enable {
+          "local/cpu-power:cpu_power" = {
+            scale = sysmonCapsuleScale;
+          };
         };
       };
-    };
-
-    # The graphical-session target waits for desktop portals, which can spend
-    # tens of seconds probing backends. Start the shell as soon as Niri is up.
-    systemd.user.services.noctalia = {
-      Unit = {
-        After = lib.mkForce [ "niri.service" ];
-        PartOf = lib.mkForce [ "niri.service" ];
-      };
-      Install.WantedBy = lib.mkForce [ "niri.service" ];
     };
   };
 }

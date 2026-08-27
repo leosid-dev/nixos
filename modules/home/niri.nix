@@ -233,7 +233,11 @@ debug {
     honor-xdg-activation-with-invalid-serial
 }
 
-binds {
+    // Desktop-persona bindings live here deliberately: the desktop profile
+    // always enables the Noctalia shell and Nautilus, and `wpctl` comes from
+    // the system sound aspect. If any of those ever become persona-gated,
+    // move the corresponding binds out of this module.
+    binds {
     Mod+Shift+Slash { show-hotkey-overlay; }
 
     ${lib.optionalString (cfg.terminalCommand != null)
