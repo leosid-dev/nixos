@@ -4,6 +4,7 @@
 # - aspects.home.niri.*      : compositor layout/hotkeys/gaps/corners/animations
 # - aspects.home.terminal.*  : Kitty opacity/fontSize/padding/scrollback
 # - aspects.home.noctalia.*  : uiScale, cpu-power plugin (palette/bar follow aspects.theme)
+# - aspects.home.mpv.*       : mpv player (hwdec, uosc, yt-dlp/torrent streaming)
 # - aspects.theme.*          : accent, mode, font, cursor, palette
 # - aspects.home.agents.*    : which LLM coding agents to install
 # (The system greeter is configured by the desktop aspect, not here.)
@@ -16,7 +17,7 @@
 #   - shell, editor, git, packages, niri, wayland
 #
 # Option-gated (explicit persona selection):
-#   - terminal, theme, noctalia, nautilus, audio, agents
+#   - terminal, theme, noctalia, nautilus, mpv, audio, agents
 { config, lib, pkgs, ... }:
 {
   imports = [
@@ -25,6 +26,7 @@
     ../modules/home/git.nix
     ../modules/home/packages.nix
     ../modules/home/nautilus.nix
+    ../modules/home/mpv.nix
     ../modules/home/niri.nix
     ../modules/home/wayland.nix
     ../modules/home/terminal.nix
@@ -40,6 +42,15 @@
     terminal.enable = true;
     theme.enable = true;
     noctalia.enable = true;
+    mpv = {
+      enable = true;
+      streaming.enable = true;
+      torrents.enable = true;
+      scripts = [
+        "uosc"
+        "sponsorblock-minimal"
+      ];
+    };
     audio = {
       enable = true;
     };

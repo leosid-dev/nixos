@@ -135,13 +135,14 @@ in
             "taskbar"
           ];
           center = [
+            "system_monitor"
             "clock"
             "notifications"
             "privacy"
           ];
           end = [
             "group:sysmon"
-            "spacer"
+            "spacer_40"
             "network"
             "bluetooth"
             "volume"
@@ -156,6 +157,8 @@ in
                 "cpu_temp"
                 "ram_used"
               ];
+              fill = "on_primary";
+              widget_spacing = 16;
             }
           ];
         };
@@ -181,7 +184,7 @@ in
             empty_color = "surface_variant";
           };
           taskbar = {
-            icon_scale = cfg.uiScale;
+            #icon_scale = cfg.uiScale;
             item_spacing = 8;
             group_by_workspace = false;
             show_all_outputs = true;
@@ -235,9 +238,20 @@ in
             type = "spacer";
             length = 32;
           };
-          spacer_64 = {
+          spacer_40 = {
             type = "spacer";
-            length = 64;
+            length = 40;
+          };
+
+          system_monitor = {
+            type = "sysmon";
+            stat = "cpu_usage";
+            visualization = "none";
+            show_value = false;
+            show_glyph = true;
+            glyph = "circle-triangle";
+            label_show_units = false;
+            actions.left = "panel-toggle control-center system";
           };
           cpu_temp = {
             type = "sysmon";
@@ -247,20 +261,24 @@ in
             show_glyph = true;
             label_show_units = true;
             scale = sysmonCapsuleScale;
+            interactive = false;
           };
           ram_used = {
             type = "sysmon";
             stat = "ram_used";
             visualization = "none";
             show_value = true;
-            show_glyph = false;
+            show_glyph = true;
+            glyph = "atom-2";
             label_show_units = true;
             scale = sysmonCapsuleScale;
+            interactive = false;
           };
         }
         // lib.optionalAttrs cfg.cpuPower.enable {
           "local/cpu-power:cpu_power" = {
             scale = sysmonCapsuleScale;
+            interactive = false;
           };
         };
       };

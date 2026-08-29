@@ -11,7 +11,7 @@
       "bypass": false,
       "input-gain": 0.0,
       "output-gain": 0.0,
-      "kernel-name": "DolbyMusic",
+      "kernel-name": "DolbyMovie",
       "ir-width": 100,
       "autogain": false
     },

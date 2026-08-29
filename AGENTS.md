@@ -26,7 +26,7 @@ If they conflict, AGENTS.md wins; STATE.md is updated to match after a refactor.
    out. No side effects, no `builtins.currentSystem`, no I/O.
 6. **One aspect tree.** Everything toggleable lives under `aspects.*`. System
    aspects (`aspects.{core,secrets,desktop,sound,power,fonts,gaming,ssh,virtualisation}`),
-   hardware aspects (`aspects.hardware.{amdRembrandt,network,storage,usb}`),
+   hardware aspects (`aspects.hardware.{amdRembrandt,fingerprint,network,storage,usb}`),
    user aspects (`aspects.users.*`), and home aspects (`aspects.home.*`) all
    share the same shape: `aspects.X = { enable = mkEnableOption ...; ... }`.
    Single-leaf aspects use `mkEnableOption` directly; multi-leaf aspects use
@@ -70,6 +70,7 @@ variation**:
 | `theme.nix`     | `aspects.home.theme.enable`     | Theme choice varies |
 | `noctalia.nix`  | `aspects.home.noctalia.enable`  | Shell choice varies |
 | `nautilus.nix`  | `aspects.home.nautilus.enable`  | File-manager choice varies |
+| `mpv.nix`       | `aspects.home.mpv.enable`       | Media player choice varies (hwdec/scripts/streaming/torrent knobs) |
 | `audio.nix`     | `aspects.home.audio.enable`     | DSP choice varies (presets option too) |
 | `agents.nix`    | `aspects.home.agents.enable`    | Agent selection varies (`packages` option) |
 
@@ -78,8 +79,8 @@ aspects. To make a different persona, write a new profile.
 
 ### Hardware aspects are opt-in
 
-Generic driver aspects live in `modules/system/hardware/` (network, storage,
-usb). Machine-specific quirks (MT7921e ASPM, AMD Rembrandt audio power-save)
+Generic driver aspects live in `modules/system/hardware/` (fingerprint, network,
+storage, usb). Machine-specific quirks (MT7921e ASPM, AMD Rembrandt audio power-save)
 live in the same files but are gated behind sub-options. Hosts enable only
 the aspects their hardware needs.
 

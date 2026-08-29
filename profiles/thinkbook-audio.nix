@@ -28,6 +28,10 @@
         file = ../assets/easyeffects/thinkbook-speakers-enhanced.json;
       }
       {
+        name = "thinkbook-speakers-movie-enhanced";
+        file = ../assets/easyeffects/thinkbook-speakers-movie-enhanced.json;
+      }
+      {
         name = "headphones-neutral";
         file = ../assets/easyeffects/headphones-neutral.json;
       }

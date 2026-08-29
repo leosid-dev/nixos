@@ -1,0 +1,54 @@
+--- a/src/webtorrent.node.ts
++++ b/src/webtorrent.node.ts
+@@ -99,7 +99,50 @@
+ });
+ client.on('error', error);
+ 
+-const torrent = client.add(options.torrentId, {
++// Stremio/Torrentio magnets ship every tracker as "tracker:udp://...", a
++// scheme bittorrent-tracker rejects as unknown. Discovery then degrades to
++// DHT-only and stalls on metadata, so normalise them to plain udp/https.
++function sanitizeMagnet(url: string): string {
++  if (!/^magnet:/i.test(url)) {
++    return url;
++  }
++
++  try {
++    let changed = false;
++    const params: string[] = [];
++
++    for (const param of url.slice(url.indexOf('?') + 1).split('&')) {
++      const eq = param.indexOf('=');
++      const key = eq === -1 ? param : param.slice(0, eq);
++
++      if (key !== 'tr' || eq === -1) {
++        params.push(param);
++        continue;
++      }
++
++      const tracker = decodeURIComponent(param.slice(eq + 1)).replace(/^tracker:/, '');
++
++      if (!/^(https?|udp|wss?):\/\//.test(tracker)) {
++        changed = true;
++        continue;
++      }
++
++      if (tracker !== param.slice(eq + 1)) {
++        changed = true;
++        params.push(`tr=${encodeURIComponent(tracker)}`);
++        continue;
++      }
++
++      params.push(param);
++    }
++
++    return changed ? `magnet:?${params.join('&')}` : url;
++  } catch {
++    return url;
++  }
++}
++
++const torrent = client.add(sanitizeMagnet(options.torrentId), {
+   path: options.path,
+   store: options.path === 'memory' ? memoryChunkStore : undefined
+ });

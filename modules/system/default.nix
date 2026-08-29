@@ -14,6 +14,7 @@
     ./gaming.nix
     ./virtualisation
     ./hardware/amd-rembrandt.nix
+    ./hardware/fingerprint.nix
     ./hardware/network.nix
     ./hardware/storage.nix
     ./hardware/usb.nix

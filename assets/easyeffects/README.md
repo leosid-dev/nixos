@@ -22,7 +22,9 @@ limiting) are replaced by a single brickwall limiter with threshold boost:
 `convolver → limiter` (and for the enhanced variant,
 `convolver → exciter → autogain → limiter`, mirroring the stage design of
 `mister2d/thinkpad-linux-audio`, which removes the classifier-dependent
-multiband compressor and re-adds clarity/loudness stages instead).
+multiband compressor and re-adds clarity/loudness stages instead; the exciter
+generates 2nd harmonics for content between 5.5 kHz and a 16 kHz ceiling —
+the band the small drivers can actually voice).
 
 ## Presets
 
@@ -30,7 +32,8 @@ multiband compressor and re-adds clarity/loudness stages instead).
 |---|---|---|
 | `thinkbook-speakers-dolby-music` | convolver (DolbyMusic) → limiter | Default; autoloaded at session start |
 | `thinkbook-speakers-dolby-movie` | convolver (DolbyMovie) → limiter | Video; the Movie kernel includes Dolby's widening/dialog tuning |
-| `thinkbook-speakers-enhanced` | convolver (DolbyMusic) → exciter → autogain → limiter | Extra clarity (5.5 kHz harmonics) and loudness normalisation (−14 LUFS) |
+| `thinkbook-speakers-enhanced` | convolver (DolbyMusic) → exciter → autogain → limiter | Extra clarity (5.5–16 kHz harmonics, ceiling bounded) and loudness normalisation (−14 LUFS) |
+| `thinkbook-speakers-movie-enhanced` | convolver (DolbyMovie) → exciter → autogain → limiter | Video + extra clarity; the same enhanced stages on the Movie kernel (widening/dialog tuning is already in the kernel, so no stereo_tools stage) |
 | `headphones-neutral` | limiter only | Neutral; select manually before using headphones |
 
 The limiter is identical in all speaker presets: LSP brickwall at −1 dBFS
@@ -62,10 +65,16 @@ locally per that repository's WASAPI loopback recipe.
 
 ## Warnings
 
+- The kernels are 48 kHz WASAPI-loopback captures, and LSP's convolver does
+  not resample them — it renders at the PipeWire graph rate. The graph must
+  stay at PipeWire's default 48 kHz (`clock.rate` / `clock.allowed-rates`
+  untouched in `modules/system/sound.nix`); a 44.1 kHz or multi-rate graph
+  would pitch- and length-shift every kernel. Re-capture or resample the IRs
+  before changing the graph rate.
 - EasyEffects applies one output preset globally to its processing chain;
   automatic speaker-versus-headphone routing is not configured here. Select
   `headphones-neutral` manually before using headphones — the convolution
   kernels are tuned to the internal speakers and will color headphone output.
-- The autogain stage in the enhanced variant normalises quiet content
+- The autogain stage in the enhanced variants normalises quiet content
   *upwards*; the limiter protects against the resulting peaks, but use the
   plain Dolby presets if you prefer level-stable output.

@@ -94,6 +94,7 @@ lib.mkHost {
               powerSave = 0;
             };
           };
+          fingerprint.enable = true; # Goodix 27c6:659a — goodixmoc match-on-chip (libfprint)
           network = {
             enable = true;
             bluetooth.enable = true;

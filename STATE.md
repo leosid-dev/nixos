@@ -1,6 +1,38 @@
 # STATE.md — Architecture, Design Principles & Current State
 
-> Last updated: 2026-08-27 · ThinkBook speaker DSP rebuilt on convolution:
+> Last updated: 2026-08-29 · Fingerprint auth added via
+> aspects.hardware.fingerprint: the ThinkBook's Goodix 27c6:659a reader runs
+> on upstream libfprint goodixmoc (match-on-chip, no TOD blob); enabling
+> fprintd flips the per-service fprintAuth default on for every PAM stack
+> (greetd, sudo, su, polkit-1, …) while `login` (Noctalia's lock screen
+> claims the reader itself over D-Bus) and `sshd` are explicitly carved out.
+> Enrollment is imperative (`fprintd-enroll`, persisted in /var/lib/fprintd).
+> Prior: webtorrent-mpv-hook now carries a patch
+> (modules/home/patches/webtorrent-mpv-hook-sanitize-magnet.patch) that
+> normalises Torrentio/Stremio magnets — their trackers ship as
+> `tracker:udp://...`, a scheme bittorrent-tracker rejects, which
+> degraded discovery to DHT-only and stalled playback on "Info hash"
+> forever; the hook rewrites the tr= list to plain udp/https schemes
+> before webtorrent sees the magnet (verified: the previously stuck
+> magnet streams end-to-end).
+> Prior: Enhanced speaker preset tightened: the exciter
+> ceiling is now active, bounding its 2nd harmonics to 5.5–16 kHz (the band
+> the small drivers can actually voice) instead of up to Nyquist — the only
+> deviation from the upstream mister2d enhanced stage values; the 48 kHz
+> kernel ↔ graph-rate invariant (LSP's convolver does not resample kernels)
+> is documented in assets/easyeffects/README.md. A movie-enhanced variant
+> (thinkbook-speakers-movie-enhanced) applies the same enhanced stages to
+> the DolbyMovie kernel for video content.
+> Prior: Media playback moved from VLC to mpv: a new
+> gated home module (aspects.home.mpv) owns the player — gpu-next render
+> pipeline on a Wayland context, VA-API hardware decoding, demuxer
+> caching, save-position-on-quit, a curated script catalog (uosc, which
+> takes over the OSC and borders; sponsorblock-minimal for YouTube
+> sponsor segments), a yt-dlp streaming sub-option, torrent streaming
+> via webtorrent-mpv-hook, and video/audio MIME defaults pinned to
+> mpv.desktop. VLC is gone from packages.nix. A shortcuts cheatsheet
+> lives at assets/mpv/CHEATSHEET.md.
+> Prior: ThinkBook speaker DSP rebuilt on convolution:
 > the hand-tuned EQ "Dolby approximation" preset (v1) is replaced by presets
 > that convolve vendor-captured Dolby impulse responses of a ThinkBook 16 G7
 > (WASAPI loopback, shuhaowu/linux-thinkpad-speaker-improvements @ 92410d6,
@@ -102,7 +134,7 @@ User-space configuration flows through Home Manager, integrated as a NixOS modul
 ### 8. Hybrid HM Gating
 Home-Manager modules are gated only when they have real per-persona variation:
 - **Always-on with desktop profile:** `shell`, `editor`, `git`, `packages`, `niri`, `wayland`
-- **Gated via `aspects.home.*`:** `terminal`, `theme`, `noctalia`, `nautilus`, `audio`, `agents`
+- **Gated via `aspects.home.*`:** `terminal`, `theme`, `noctalia`, `nautilus`, `mpv`, `audio`, `agents`
 
 A persona is a profile; `profiles/desktop.nix` is the only one today.
 
@@ -165,6 +197,7 @@ nixos/
 │   │   │   └── features.nix               # Optional knobs (ksm, swtpm, spiceUsbRedirection, vfio)
 │   │   └── hardware/                      # Device-specific driver aspects
 │   │       ├── amd-rembrandt.nix          # AMD Ryzen 7 7735HS + Radeon 680M
+│   │       ├── fingerprint.nix            # fprintd + pam_fprintd (goodixmoc; login/sshd carve-outs)
 │   │       ├── network.nix                # WiFi (MT7921e + aspmFix knob), BT (+bluetooth.enable), firmware
 │   │       ├── storage.nix                # fstrim, udisks2, fwupd (manual LVFS updates)
 │   │       └── usb.nix                    # USB + USB4/Thunderbolt (+thunderbolt.enable)
@@ -173,7 +206,16 @@ nixos/
 │       ├── shell.nix                      # Zsh + fzf + eza + bat (always-on; flakePath required)
 │       ├── editor.nix                     # Neovim via nixvim (always-on, sets EDITOR/VISUAL, fixed TokyoNight)
 │       ├── git.nix                        # Git + Delta + lazygit (always-on; identity in host user data)
-│       ├── packages.nix                   # Shared user applications (always-on; vlc)
+│       ├── packages.nix                   # Shared user applications (always-on)
+│       ├── mpv.nix                         # mpv player: gpu-next/VA-API, caching,
+│       │                                  #   uosc, yt-dlp/torrent streaming,
+│       │                                  #   sponsorblock-minimal, media MIME pins
+│       ├── patches/                        # Carried upstream patches
+│       │   └── webtorrent-mpv-hook-sanitize-magnet.patch
+│       │                                  #   rewrites Torrentio "tracker:udp://"
+│       │                                  #   trackers (bittorrent-tracker rejects
+│       │                                  #   the scheme → DHT-only stall) to plain
+│       │                                  #   udp/https before client.add
 │       ├── niri.nix                       # Niri user config.kdl (always-on with desktop profile, palette-derived rings)
 │       ├── wayland.nix                    # grim/slurp/wl-clipboard/xwayland-satellite/qt-wayland
 │       ├── terminal.nix                   # Kitty, structured palette, sets TERMINAL; opacity/fontSize/padding knobs
@@ -196,14 +238,17 @@ nixos/
 └── assets/
     ├── easyeffects/
     │   ├── README.md                       # Approach, preset guide, IRS provenance + caveats
-    │   ├── thinkbook-speakers-dolby-music.json  # Convolver (DolbyMusic IRS) → limiter (autoloaded)
-    │   ├── thinkbook-speakers-dolby-movie.json  # Convolver (DolbyMovie IRS) → limiter
-    │   ├── thinkbook-speakers-enhanced.json     # Convolver → exciter → autogain → limiter
+    │   ├── thinkbook-speakers-dolby-music.json     # Convolver (DolbyMusic IRS) → limiter (autoloaded)
+    │   ├── thinkbook-speakers-dolby-movie.json     # Convolver (DolbyMovie IRS) → limiter
+    │   ├── thinkbook-speakers-enhanced.json        # Convolver (DolbyMusic IRS) → exciter → autogain → limiter
+    │   ├── thinkbook-speakers-movie-enhanced.json  # Convolver (DolbyMovie IRS) → exciter → autogain → limiter
     │   ├── headphones-neutral.json        # Neutral headphone preset (safety limiter only)
     │   └── irs/
     │       └── thinkbook16-g7/             # Dolby IRS captured from ThinkBook 16 G7 (community)
     ├── ricing/
     │   └── README.md                      # Ricing cheat sheet: aspect knobs, examples, checks
+    ├── mpv/
+    │   └── CHEATSHEET.md                  # mpv shortcuts: defaults + uosc/sponsorblock/webtorrent keys
     └── virt/
         └── README.md                      # KVM runbook: VM creation, virtiofs XML, Venus, tuning
 ```
@@ -224,6 +269,7 @@ nixos/
 | Bluetooth | Foxconn MediaTek (btusb), Noctalia control-center Bluetooth service (Blueman applet removed) |
 | Audio | Realtek ALC257 (HDA) — no smart amps; DSP via EasyEffects profile preset |
 | USB4 | Rembrandt USB4 router present → bolt enabled |
+| Fingerprint | Goodix `27c6:659a` — libfprint `goodixmoc` match-on-chip (no TOD driver) |
 
 ### Software Stack
 | Component | Choice | Channel |
@@ -233,6 +279,7 @@ nixos/
 | Secrets | sops-nix (age via SSH host ed25519) | flake input |
 | Terminal | Kitty | stable (auto-sets TERMINAL) |
 | Browser | Firefox (system-level, native Wayland via MOZ_ENABLE_WAYLAND) | stable |
+| Media player | mpv (gpu-next + VA-API, uosc, yt-dlp + torrent streaming, sponsorblock) | stable |
 | File Editor | Neovim via nixvim (nixd LSP, sets EDITOR/VISUAL) | flake input |
 | LLM Agents | opencode + grok via numtide/llm-agents.nix | flake input (own unstable pin, numtide cache) |
 | Gaming Stack | Steam + GameMode + Wine + MangoHud + Bottles | stable |
@@ -243,6 +290,7 @@ nixos/
 | Theme | Monochrome (true-black) via `aspects.theme.accent`; Adwaita GTK/QT + dconf; structured `aspects.theme.palette` | stable |
 | Fonts | Inter (GUI) + JetBrains Mono (TUI), Noto Fonts, Noto Color Emoji | stable |
 | Firmware | fwupd (LVFS, manual `fwupdmgr update`) | stable |
+| Fingerprint auth | fprintd + pam_fprintd (every service; `login`/`sshd` carved out) | stable |
 
 ---
 
@@ -276,9 +324,9 @@ nixos/
 4. **Full build:** `nixos-rebuild build --flake .#thinkbook` (then `switch`)
 5. **Audio preset:** The ThinkBook Home Manager audio profile autoloads
    `thinkbook-speakers-dolby-music` (convolver, Dolby IRS) on session start.
-   `thinkbook-speakers-dolby-movie` and `thinkbook-speakers-enhanced` are
-   deployed for manual selection, as is `headphones-neutral` — select it
-   before using headphones.
+   `thinkbook-speakers-dolby-movie`, `thinkbook-speakers-enhanced`, and
+   `thinkbook-speakers-movie-enhanced` are deployed for manual selection, as
+   is `headphones-neutral` — select it before using headphones.
 6. **Firmware:** `fwupdmgr refresh && fwupdmgr update` (manual, on demand).
 7. **LLM agents:** `opencode --version && grok --version`; auth is
    imperative (`opencode auth login`, grok login) — nothing declarative.
@@ -294,6 +342,17 @@ nixos/
     ram_pct, + cpu_power plugin; members at 0.9x bar scale; left-click →
     Control Center System) -> spacer
    -> network, bluetooth, volume, battery, tray, session right.
+10. **Media player:** `mpv --version`; play a video and open the stats
+    overlay (`i`) to confirm `hwdec: vaapi` and `vo=gpu-next`; the uosc
+    UI renders, `mpv <youtube-url>` streams, `mpv <magnet-url>` streams a
+    torrent while downloading (Torrentio/Stremio magnets with
+    `tracker:`-prefixed trackers included — the sanitize-magnet patch
+    normalises them), YouTube sponsor segments auto-skip, and
+    Nautilus "Open with" defaults to mpv for video/audio files.
+    Shortcut reference: `assets/mpv/CHEATSHEET.md`.
+11. **Fingerprint:** `fprintd-enroll sid` (imperative — templates persist in
+    `/var/lib/fprintd`), then verify `sudo -k && sudo -v` offers the reader
+    and the Noctalia lock screen unlocks with a finger.
 
 ---
 
@@ -307,6 +366,7 @@ nixos/
 | `aspects.sound.jack.enable` | sound.nix | `false` | JACK audio emulation layer via PipeWire |
 | `aspects.hardware.network.bluetooth.enable` | network.nix | `false` | Bluetooth hardware controller and daemon |
 | `aspects.hardware.usb.thunderbolt.enable` | usb.nix | `false` | Thunderbolt / USB4 router and bolt daemon |
+| `aspects.hardware.fingerprint.enable` | hardware/fingerprint.nix | `false` | fprintd + pam_fprintd on every PAM service; `login` (Noctalia lock screen claims the reader over D-Bus) and `sshd` excluded |
 | `aspects.home.noctalia.uiScale` | home/noctalia.nix | `1.0` | UI scale multiplier (ui_scale + bar scale); 1.15 on ThinkBook |
 | `aspects.home.noctalia.cpuPower.enable` | home/noctalia-cpu-power.nix | `false` | CPU package power widget (RAPL/hwmon paths are host data) |
 | `aspects.home.noctalia.cpuPower.pollIntervalMs` | home/noctalia-cpu-power.nix | `2000` | Plugin sampling cadence (Δenergy/Δt); also the discontinuity window (`max(4x, 10s)` → drop + re-baseline) |

@@ -1,15 +1,14 @@
 # modules/home/packages.nix — Common user applications.
 #
-# Always-on shared applications: media playback plus the basic-desktop
-# essentials (image viewer, document viewer, archive manager, GUI text
-# editor), with deterministic MIME defaults pinned alongside (the
-# directory pin lives in nautilus.nix). Also ships a "Neovim in Kitty"
-# desktop entry so graphical file managers and choosers can launch the
-# terminal editor.
+# Always-on shared applications: the basic-desktop essentials (image
+# viewer, document viewer, archive manager, GUI text editor), with
+# deterministic MIME defaults pinned alongside (the directory pin lives
+# in nautilus.nix, the media pins in mpv.nix). Also ships a "Neovim in
+# Kitty" desktop entry so graphical file managers and choosers can
+# launch the terminal editor.
 { config, lib, pkgs, ... }:
 {
   home.packages = with pkgs; [
-    vlc # media playback
     loupe # image viewer (GNOME, GTK4)
     zathura # document viewer (PDF/epub; nixpkgs wraps it with plugins)
     file-roller # archive manager (nautilus extract/compress integration)
