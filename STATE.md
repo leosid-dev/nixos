@@ -1,6 +1,35 @@
 # STATE.md — Architecture, Design Principles & Current State
 
-> Last updated: 2026-08-29 · Fingerprint auth added via
+> Last updated: 2026-08-29 · Greeter fingerprint wake: login.nix wires
+> auth.allow_empty_password to aspects.hardware.fingerprint — the greeter
+> only starts the greetd/PAM conversation on submit and pam_fprintd is the
+> first (sufficient) module of the greetd stack, so empty-submit allowance
+> makes the sensor wake on Enter (fprintd's "Place finger" shown as a
+> status hint) instead of only after a password attempt; typed passwords
+> still work (armed and auto-posted to the pam_unix try_first_pass prompt
+> once fprintd fails or times out). Zero-keypress wake is not possible with
+> greeter 1.2.1: no auto-start hook, and greetd's sequential PAM protocol
+> cannot claim the reader concurrently with the password prompt.
+> Prior: Greeter appearance pass: the noctalia-greeter
+> is now declaratively synced with the Noctalia shell — login.nix ships a
+> complete 16-key [appearance.palette] derived from lib/palettes.nix via a
+> system-side accent/mode mirror (modules/system/theme.nix; defaults must
+> stay aligned with the HM profile's aspects.theme selection), plus
+> scheme=Synced, theme_mode, hide_logo, and the uiFont family; no
+> wallpaper key, so the backdrop paints from the shipped palette (true
+> black in dark mode, matching niri's). hover/on_hover mirror the runtime
+> hover=tertiary mapping; a complete declarative palette wins over the
+> shell-written sync.toml, making the look deterministic from first boot.
+> Prior: Virtualisation aspect audit pass: removed the
+> redundant security.polkit.enable from platform.nix (the libvirtd module
+> owns polkit), VFIO modules now also load in initrd so vfio-pci.ids= claims
+> devices before udev coldplug binds host drivers, virtiofs hostPaths must
+> be whitespace-free (tmpfiles field-splitting corrupts such rules), and
+> virt-disk/README now describe the default root-mode reality — qemu-libvirtd
+> is the at-rest owner libvirt's dynamic ownership restores, not the runtime
+> user; run-nixos-iso.sh is documented as a pre-install helper for hosts with
+> direct /dev/kvm access.
+> Prior: Fingerprint auth added via
 > aspects.hardware.fingerprint: the ThinkBook's Goodix 27c6:659a reader runs
 > on upstream libfprint goodixmoc (match-on-chip, no TOD blob); enabling
 > fprintd flips the per-service fprintAuth default on for every PAM stack
@@ -95,7 +124,7 @@ System, hardware, user, and home modules are organised as **aspects** — self-c
 | `aspects.users.*` | User identity | OS-level user account declaration |
 | `aspects.home.*` | Home-Manager toggles | Per-persona HM opt-ins (audio, theme, …) |
 | `aspects.locale` | System cross-cutting | Keymap shared by console and greeter |
-| `aspects.theme` | Home Manager cross-cutting | Font, cursor, mode, accent, and structured palette |
+| `aspects.theme` | Home Manager cross-cutting | Font, cursor, mode, accent, and structured palette; system-side accent/mode mirror (`modules/system/theme.nix`) feeds the pre-login greeter |
 
 > Every aspect except Core is **off by default** and enabled per host (or per
 > profile) through the `aspects.*` option tree. The naming convention is
@@ -176,6 +205,8 @@ nixos/
 │   │   ├── sound.nix                      # PipeWire + ALSA + PulseAudio compat (+jack sub-option)
 │   │   ├── power.nix                      # power-profiles-daemon + upower
 │   │   ├── fonts.nix                      # System font packages (Noto, Noto Emoji, Inter for greeter)
+│   │   ├── theme.nix                        # System-side accent/mode mirror for the pre-login
+│   │   │                                  #   greeter (colors always derived from lib/palettes.nix)
 │   │   ├── core/                          # Always-on fundamentals (aspects.core.enable)
 │   │   │   ├── default.nix                # Index
 │   │   │   ├── boot.nix                   # systemd-boot (limit 3), kernelPackages option, tmpfs, zram
@@ -188,7 +219,9 @@ nixos/
 │   │   │   ├── niri.nix                   # Niri compositor + uniform Wayland sessionVariables (SDL fallback)
 │   │   │   ├── portals.nix                # XDG desktop portals (GTK fallback) + dconf + Secret portal provider
 │   │   │   ├── browser.nix                # Firefox (system-level, native Wayland)
-│   │   │   └── login.nix                  # noctalia-greeter (reads aspects.locale.keyMap)
+│   │   │   └── login.nix                  # noctalia-greeter: declarative synced appearance
+│   │   │                                  #   (palette from lib/palettes.nix via the aspects.theme
+│   │   │                                  #   mirror, theme_mode, hide_logo, uiFont family, keyMap)
 │   │   ├── virtualisation/                # KVM/QEMU virtualisation aspect
 │   │   │   ├── default.nix                # Index (aspects.virtualisation.enable)
 │   │   │   ├── platform.nix               # libvirtd (root mode), QEMU, virt-manager, virtiofsd
@@ -335,7 +368,10 @@ nixos/
    default libvirt network, create the Ubuntu VM (UEFI, virtio-blk tuned),
    add the virtiofs data share from `/var/lib/libvirt/shares/ubuntu`, and
    verify the guest mount and `vulkaninfo` (Venus).
-9. **Visual:** `niri validate` against the generated config, then check
+9. **Visual:** reboot to the greeter first: the login card paints from the
+    declarative synced palette (true-black backdrop in dark mode, no
+    brand logo, Inter UI font — identical tokens to the shell's bar).
+    Then `niri validate` against the generated config, then check
     the bezier overshoot/settle, radius-8 corners, grayscale focus ring on
     true-black background, and the flat macOS-style bar: workspaces + taskbar
     left, clock + notifications + privacy center, sysmon capsule (cpu_temp +
@@ -352,7 +388,10 @@ nixos/
     Shortcut reference: `assets/mpv/CHEATSHEET.md`.
 11. **Fingerprint:** `fprintd-enroll sid` (imperative — templates persist in
     `/var/lib/fprintd`), then verify `sudo -k && sudo -v` offers the reader
-    and the Noctalia lock screen unlocks with a finger.
+    and the Noctalia lock screen unlocks with a finger. At the greeter:
+    Enter on the empty field wakes the sensor ("Place finger" hint) and a
+    finger logs in; a typed password still logs in after the fprintd
+    timeout/failure.
 
 ---
 
@@ -366,8 +405,9 @@ nixos/
 | `aspects.sound.jack.enable` | sound.nix | `false` | JACK audio emulation layer via PipeWire |
 | `aspects.hardware.network.bluetooth.enable` | network.nix | `false` | Bluetooth hardware controller and daemon |
 | `aspects.hardware.usb.thunderbolt.enable` | usb.nix | `false` | Thunderbolt / USB4 router and bolt daemon |
-| `aspects.hardware.fingerprint.enable` | hardware/fingerprint.nix | `false` | fprintd + pam_fprintd on every PAM service; `login` (Noctalia lock screen claims the reader over D-Bus) and `sshd` excluded |
+| `aspects.hardware.fingerprint.enable` | hardware/fingerprint.nix | `false` | fprintd + pam_fprintd on every PAM service; `login` (Noctalia lock screen claims the reader over D-Bus) and `sshd` excluded; eval assertion: `unixAuth` must stay on wherever `fprintAuth` is on (password fallback invariant); the greeter gains empty-submit wake-on-Enter (login.nix) |
 | `aspects.home.noctalia.uiScale` | home/noctalia.nix | `1.0` | UI scale multiplier (ui_scale + bar scale); 1.15 on ThinkBook |
+| noctalia-greeter appearance | desktop/login.nix | synced | Declarative `[appearance]`: scheme=Synced, 16-key palette from `lib/palettes.nix` via the `aspects.theme` system mirror, theme_mode, hide_logo, `aspects.fonts.uiFont.name`; no wallpaper key (palette-driven backdrop) |
 | `aspects.home.noctalia.cpuPower.enable` | home/noctalia-cpu-power.nix | `false` | CPU package power widget (RAPL/hwmon paths are host data) |
 | `aspects.home.noctalia.cpuPower.pollIntervalMs` | home/noctalia-cpu-power.nix | `2000` | Plugin sampling cadence (Δenergy/Δt); also the discontinuity window (`max(4x, 10s)` → drop + re-baseline) |
 | `aspects.home.noctalia.cpuPower.maxWatts` | home/noctalia-cpu-power.nix | `500` | Sanity gate: higher readings are dropped and re-baselined, never clamped for display |

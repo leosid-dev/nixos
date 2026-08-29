@@ -95,6 +95,24 @@ Greeter
   enabled with `aspects.desktop.enable`. It reads the keyboard layout from
   `aspects.locale.keyMap` and defaults the session to niri. There are no
   per-user knobs — greeters run pre-login.
+- Appearance is declaratively synced with the Noctalia shell: a complete
+  16-key `[appearance.palette]` is derived from `lib/palettes.nix` (the
+  canonical color source) through the system-side accent/mode mirror
+  (`modules/system/theme.nix`; its defaults must stay aligned with the HM
+  profile's `aspects.theme` selection — same manual-alignment contract as
+  `aspects.fonts.uiFont`). Also shipped: `scheme = "Synced"`, `theme_mode`,
+  `hide_logo`, and the UI font family from `aspects.fonts.uiFont`. No
+  wallpaper key — the greeter paints from the shipped palette, matching
+  the compositor's palette-derived backdrop. A complete declarative
+  palette wins over the shell-written sync.toml, so the look is
+  deterministic from first boot.
+- Fingerprint (when `aspects.hardware.fingerprint.enable` is on): the
+  greeter starts the greetd/PAM conversation only on submit, and
+  pam_fprintd is the first (`sufficient`) module of the greetd stack — so
+  login.nix sets `auth.allow_empty_password`: Enter on the empty field
+  wakes the sensor and fprintd's "Place finger" hint shows; a finger logs
+  in. A typed password still works (auto-posted to the pam_unix
+  `try_first_pass` prompt once fprintd fails or times out).
 
 Neovim
 - Configured declaratively via nixvim (`modules/home/editor.nix`): LSP
@@ -160,7 +178,9 @@ Verification (on a machine with Nix)
 
 Manual functional checks (on the target host)
 - Greeter: boot, confirm the login screen uses the console keymap and
-  starts a niri session.
+  starts a niri session; the backdrop paints from the shipped palette
+  (true black in dark mode) with no logo and the Inter UI font — the same
+  tokens the Noctalia bar renders with.
 - Niri: login, verify the configured output scale, gaps/center-focused
   behavior, and window animations; test hotkeys (terminal spawn via
   Mod+Return, overview via Mod+O, workspace navigation, focus/move,

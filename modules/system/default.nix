@@ -11,6 +11,7 @@
     ./sound.nix
     ./power.nix
     ./fonts.nix
+    ./theme.nix
     ./gaming.nix
     ./virtualisation
     ./hardware/amd-rembrandt.nix

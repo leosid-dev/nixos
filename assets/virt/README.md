@@ -75,7 +75,12 @@ virt-disk ubuntu 64G
 ```
 
 This creates a sparse qcow2 image with metadata preallocation, owned by
-`qemu-libvirtd` (the user libvirtd runs QEMU as) so guests can write to it:
+`qemu-libvirtd` at rest — libvirt's dynamic ownership hands the image to
+root while a domain runs (the host keeps libvirtd's default root mode) and
+restores this owner when it stops. The `qemu-libvirtd` owner is also what
+unprivileged mode (`virtualisation.libvirtd.qemu.runAsRoot = false`) would
+require; the host stays in root mode because unprivileged virtiofsd could
+not traverse the `0750 1000:1000` share directories without ACL grants:
 
 ```text
 /var/lib/libvirt/images/ubuntu.qcow2

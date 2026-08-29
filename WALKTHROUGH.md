@@ -209,8 +209,9 @@ Remove the USB stick when the machine powers down.
 
 ## 8. First boot
 
-The noctalia greeter comes up with the console keymap (`us`) and defaults
-to the niri session. Log in as `sid` with the password you hashed in
+The noctalia greeter comes up with the console keymap (`us`), the synced
+monochrome palette (true-black backdrop, no logo), and defaults to the
+niri session. Log in as `sid` with the password you hashed in
 step 6.
 
 ## 9. Relocate the flake and commit the lock
@@ -243,7 +244,8 @@ but proves the relocated checkout works end to end.
 
 ## 11. Verify the working environment
 
-- **Greeter:** reboot once; login screen uses the `us` keymap and starts
+- **Greeter:** reboot once; login screen uses the `us` keymap, paints the
+  synced palette (true-black backdrop, no logo, Inter), and starts
   niri.
 - **Compositor:** `Mod+Return` opens Kitty; window animations overshoot
   slightly then settle; `Mod+Shift+Y` screenshots a region to clipboard

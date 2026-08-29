@@ -3,6 +3,11 @@
 #
 #   ./run-nixos-iso.sh [path/to/nixos.iso]
 #
+# Pre-install helper (WALKTHROUGH.md): meant for a host with direct
+# /dev/kvm access, e.g. an Ubuntu machine used to test the ISO before the
+# NixOS install. On the NixOS host itself use virt-manager (qemu:///system)
+# instead — this script bypasses libvirt and needs the kvm group.
+#
 # Defaults: 4 vCPUs (host model), 4 GiB RAM, 32 GiB scratch disk
 # (auto-created, reused on later runs), user-mode networking.
 # Override: CPUS=8 MEM=8G DISK_SIZE=64G QEMU=/path/to/qemu-system-x86_64

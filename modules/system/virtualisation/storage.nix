@@ -60,7 +60,10 @@ let
       sudo ${cfg.qemuPackage}/bin/qemu-img create -f qcow2 -o preallocation=metadata,cluster_size=64k "$img" "$size"
     fi
 
-    # Hand the image to the user libvirtd runs QEMU as, so guests can write.
+    # Set the at-rest owner. libvirtd runs QEMU as root here (runAsRoot
+    # default), and its dynamic ownership hands the image to root while a
+    # domain runs and restores this owner when it stops. This owner is also
+    # what unprivileged mode (qemu.runAsRoot = false) would require.
     sudo chown qemu-libvirtd:qemu-libvirtd "$img"
     sudo chmod 0600 "$img"
 

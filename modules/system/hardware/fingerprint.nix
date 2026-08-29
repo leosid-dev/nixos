@@ -36,5 +36,15 @@ in
 
     # Never fingerprint-gate remote logins.
     security.pam.services.sshd.fprintAuth = false;
+
+    # Password must always remain a fallback: nixpkgs marks pam_fprintd
+    # `sufficient`, so fingerprint failure falls through to pam_unix — unless
+    # someone disables unixAuth. Fail the eval instead of locking out.
+    # rootOK services (runuser, ...) are exempt: pam_rootok grants before any
+    # auth module runs, and nixpkgs intentionally ships them with unixAuth off.
+    assertions = lib.mapAttrsToList (name: svc: {
+      assertion = !(svc.fprintAuth && !svc.rootOK && !svc.unixAuth);
+      message = "fingerprint: service '${name}' has fprintAuth but no password fallback";
+    }) config.security.pam.services;
   };
 }

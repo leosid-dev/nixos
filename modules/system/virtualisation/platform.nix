@@ -22,7 +22,9 @@ in
     programs.virt-manager.enable = cfg.virtManager.enable;
     environment.systemPackages = lib.optionals cfg.virtManager.enable [ pkgs.virt-viewer ];
 
-    security.polkit.enable = lib.mkDefault true;
+    # NOTE: polkit is owned by the libvirtd module itself — it enables
+    # security.polkit unconditionally (with its libvirtd-group rule) and
+    # asserts it. Do not duplicate it here.
 
     # Keep both the config generator and daemon off a missing libvirt mount.
     systemd.services.libvirtd-config.unitConfig.RequiresMountsFor = [ "/var/lib/libvirt" ];

@@ -30,8 +30,12 @@ in
         message = "aspects.virtualisation.virtiofs.shares.${name} must use only alphanumeric characters, underscores, and dashes, starting with alphanumeric";
       }
       {
-        assertion = lib.hasPrefix "/" share.hostPath && share.hostPath != "/";
-        message = "aspects.virtualisation.virtiofs.shares.${name}.hostPath must be an absolute non-root path: ${share.hostPath}";
+        # Tmpfiles rules are whitespace-separated fields: a path containing a
+        # space or newline would silently corrupt the generated `d` rule.
+        assertion = lib.hasPrefix "/" share.hostPath
+          && share.hostPath != "/"
+          && builtins.match "[^ \t\n\r]*" share.hostPath != null;
+        message = "aspects.virtualisation.virtiofs.shares.${name}.hostPath must be an absolute, non-root path without whitespace: ${share.hostPath}";
       }
     ]) cfg.virtiofs.shares);
 

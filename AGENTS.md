@@ -42,10 +42,15 @@ If they conflict, AGENTS.md wins; STATE.md is updated to match after a refactor.
    - keymap             → `aspects.locale.keyMap` (console + greeter share)
    - font family/cursor → `aspects.theme.font` / `aspects.theme.cursor`
     - accent palette     → `aspects.theme.palette` (derived from canonical
-                           `aspects.theme.accent`; Noctalia, Kitty, and
-                           Niri focus-ring/background all read it — Neovim
-                           is a deliberate exception with a fixed TokyoNight
-                           colorscheme)
+                           `aspects.theme.accent`; Noctalia, Kitty, Niri
+                           focus-ring/background, and the noctalia-greeter
+                           all read it — Neovim is a deliberate exception
+                           with a fixed TokyoNight colorscheme). The greeter
+                           cannot read HM options, so a system-side
+                           accent/mode mirror (`modules/system/theme.nix`)
+                           re-derives colors from the same
+                           `lib/palettes.nix`; its defaults must stay
+                           aligned with the HM profile selection.
    - cachix key         → `modules/system/core/nix.nix`
 9. **Compositor + shell.** Niri (unstable) is the Wayland compositor;
    Noctalia v5 shell via Home Manager; noctalia-greeter via greetd (system
