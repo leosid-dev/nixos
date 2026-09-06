@@ -52,10 +52,13 @@ in
     '';
 
     # ── CPU Microcode & Driver Tuning ──────────────────────────────
+    # Note: no "amd_energy" here — upstream removed it in 5.13 and it was
+    # EPYC-only anyway; Ryzen power comes via powercap RAPL (see the udev
+    # rule above) and k10temp below. Listing it only spams
+    # "Failed to find module 'amd_energy'" from systemd-modules-load.
     hardware.cpu.amd.updateMicrocode = lib.mkDefault true;
 
     boot.kernelModules = [
-      "amd_energy"   # Energy counters monitoring per-core/package power
       "k10temp"      # CPU temperature monitoring driver
       "amdgpu"
     ];

@@ -97,7 +97,12 @@ lib.mkHost {
           fingerprint.enable = true; # Goodix 27c6:659a — goodixmoc match-on-chip (libfprint)
           network = {
             enable = true;
-            bluetooth.enable = true;
+            dns.backend = "systemd-resolved"; # provides org.freedesktop.resolve1 for NM clients
+            bluetooth = {
+              enable = true;
+              powerOnBoot = false; # radio off until toggled in the shell
+              leAudio.enable = true; # BAP/LE-Audio via kernel ISO socket
+            };
             wifi = {
               aspmFix = true;
               powersave = false;

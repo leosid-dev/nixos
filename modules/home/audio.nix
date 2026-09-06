@@ -191,7 +191,17 @@ in
       easyeffects = {
         Unit = {
           Description = "EasyEffects — PipeWire audio DSP";
-          After = [ "pipewire.service" ];
+          # Order after the compositor as well as PipeWire: the unit runs
+          # display-connected and Qt aborts (core-dump) without the Wayland
+          # socket, while graphical-session.target can fire before Niri's
+          # socket exists. niri.service comes up as soon as the compositor
+          # is ready (same anchor noctalia uses via wayland.systemd.target).
+          # After-only (no Requires/Wants): safe no-op if Niri is absent;
+          # Restart=on-failure stays as the backstop for the residual race.
+          After = [
+            "pipewire.service"
+            "niri.service"
+          ];
           PartOf = [ "graphical-session.target" ];
         };
         Service = {
