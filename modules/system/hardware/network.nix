@@ -50,6 +50,41 @@ in
           for classic A2DP when the controller lacks offload.
         '';
       };
+
+      ertmFix = {
+        enable = lib.mkEnableOption ''
+          Disable Bluetooth Enhanced Retransmission Mode (ERTM).
+          Required for Xbox-controller-class BT gamepads (e.g. EvoFox One S
+          in BT X-input mode, 045e:02e0): ERTM fights their HID control
+          channel, FF reports fail, and BlueZ recreates the uhid device
+          every few minutes of active play.
+        '';
+      };
+
+      usbAutosuspendFix = {
+        enable = lib.mkEnableOption ''
+          Disable btusb USB autosuspend (options btusb enable_autosuspend=0).
+          Keeps the host BT radio from napping mid-game on MediaTek USB
+          adapters; cheaper than a global usbcore.autosuspend=-1.
+        '';
+      };
+
+      kernelHid = {
+        enable = lib.mkEnableOption ''
+          Kernel HID path for BT input devices (UserspaceHID=false,
+          ClassicBondedOnly=false, IdleTimeout=0 in input.conf). Required
+          for hid_xpadneo to own Xbox-class gamepads; also stops BlueZ
+          idle-disconnects racing the pad's own sleep timer.
+        '';
+      };
+
+      xpadneo = {
+        enable = lib.mkEnableOption ''
+          The xpadneo driver (hid_xpadneo) for Xbox One/Series-class
+          wireless controllers over Bluetooth. Proper FF/rumble handling
+          where stock hid_microsoft drops reports mid-play.
+        '';
+      };
     };
 
     wifi = {
@@ -92,9 +127,13 @@ in
     networking.firewall.enable = true;
 
     # ── Driver Modprobe Workarounds ─────────────────────────────────
-    boot.extraModprobeConfig = lib.mkIf cfg.wifi.aspmFix ''
-      options mt7921e disable_aspm=Y
-    '';
+    # types.lines concatenates across modules, so the fragments below merge
+    # with other contributors (e.g. amd-rembrandt HDA tuning) line-wise.
+    boot.extraModprobeConfig = lib.concatStringsSep "\n" (
+      lib.optionals cfg.wifi.aspmFix [ "options mt7921e disable_aspm=Y" ]
+      ++ lib.optionals cfg.bluetooth.ertmFix.enable [ "options bluetooth disable_ertm=Y" ]
+      ++ lib.optionals cfg.bluetooth.usbAutosuspendFix.enable [ "options btusb enable_autosuspend=0" ]
+    );
 
     # ── Bluetooth ───────────────────────────────────────────────────
     hardware.bluetooth = lib.mkIf cfg.bluetooth.enable {
@@ -109,6 +148,20 @@ in
           KernelExperimental = "6fbaf188-05e0-496a-9885-d6ddfdb4e03e";
         };
       };
+
+      # Kernel HID path for BT input (input.conf). Upstream defaults to {},
+      # so the mkIf keeps this inert until kernelHid is enabled.
+      input = lib.mkIf cfg.bluetooth.kernelHid.enable {
+        General = {
+          UserspaceHID = false;
+          ClassicBondedOnly = false;
+          IdleTimeout = 0;
+        };
+      };
     };
+
+    # xpadneo owns Xbox-class BT gamepads via hid_xpadneo. Upstream forces
+    # hardware.bluetooth.enable on; our aspect flag keeps it host-opt-in.
+    hardware.xpadneo.enable = cfg.bluetooth.xpadneo.enable;
   };
 }

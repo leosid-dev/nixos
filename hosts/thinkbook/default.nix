@@ -102,6 +102,15 @@ lib.mkHost {
               enable = true;
               powerOnBoot = false; # radio off until toggled in the shell
               leAudio.enable = true; # BAP/LE-Audio via kernel ISO socket
+              # EvoFox One S (045e:02e0 clone) BT: FW update fixed the
+              # link-flap/root cause; keep kernel HID + xpadneo for proper
+              # FF/trigger-rumble/mapping+battery. ERTM/btusb autosuspend
+              # mitigations retained as inert options, now off (re-enable
+              # per-bisection if flaps return).
+              ertmFix.enable = false;
+              usbAutosuspendFix.enable = false;
+              kernelHid.enable = true;
+              xpadneo.enable = true;
             };
             wifi = {
               aspmFix = true;

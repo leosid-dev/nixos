@@ -7,7 +7,12 @@
 # Inbound firewall openings for Steam Remote Play and dedicated servers are
 # explicit opt-in sub-options (default off).
 # Gated by aspects.gaming.enable.
-{ lib, config, pkgs, ... }:
+{
+  lib,
+  config,
+  pkgs,
+  ...
+}:
 let
   cfg = config.aspects.gaming;
 in
@@ -52,17 +57,20 @@ in
     };
 
     # ── Gaming & Driver Utilities ──────────────────────────────────────
-    environment.systemPackages = with pkgs; [
-      mangohud # Performance overlay (FPS, temperatures, usage)
-
-      # Vulkan & Driver utilities
-      vulkan-tools
-      clinfo
-    ] ++ lib.optionals cfg.wine.enable [
-      wineWow64Packages.stable # WOW64 wine (wineWowPackages deprecated in 26.05)
-      winetricks
-      protonup-qt # Easy Proton-GE manager
-      bottles # Wine bottle manager
-    ];
+    environment.systemPackages =
+      with pkgs;
+      [
+        mangohud # Performance overlay (FPS, temperatures, usage)
+        heroic
+        # Vulkan & Driver utilities
+        vulkan-tools
+        clinfo
+      ]
+      ++ lib.optionals cfg.wine.enable [
+        wineWow64Packages.stable # WOW64 wine (wineWowPackages deprecated in 26.05)
+        winetricks
+        protonup-qt # Easy Proton-GE manager
+        bottles # Wine bottle manager
+      ];
   };
 }

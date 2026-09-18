@@ -404,6 +404,10 @@ nixos/
 | `aspects.gaming.dedicatedServer.enable` | gaming.nix | `false` | Inbound firewall port opening for Steam Dedicated Server |
 | `aspects.sound.jack.enable` | sound.nix | `false` | JACK audio emulation layer via PipeWire |
 | `aspects.hardware.network.bluetooth.enable` | network.nix | `false` | Bluetooth hardware controller and daemon |
+| `aspects.hardware.network.bluetooth.ertmFix.enable` | network.nix | `false` | ERTM off for Xbox-class BT gamepads (FF/HID control-channel fix); off on ThinkBook (FW fix made it inert; re-enable per bisection) |
+| `aspects.hardware.network.bluetooth.usbAutosuspendFix.enable` | network.nix | `false` | btusb autosuspend off (MT7922 radio naps mid-game); off on ThinkBook (FW fix; re-enable per bisection) |
+| `aspects.hardware.network.bluetooth.kernelHid.enable` | network.nix | `false` | input.conf kernel HID path (UserspaceHID=false, ClassicBondedOnly=false, IdleTimeout=0); on on ThinkBook |
+| `aspects.hardware.network.bluetooth.xpadneo.enable` | network.nix | `false` | hid_xpadneo for Xbox-class BT pads (proper FF/rumble); on on ThinkBook |
 | `aspects.hardware.usb.thunderbolt.enable` | usb.nix | `false` | Thunderbolt / USB4 router and bolt daemon |
 | `aspects.hardware.fingerprint.enable` | hardware/fingerprint.nix | `false` | fprintd + pam_fprintd on every PAM service; `login` (Noctalia lock screen claims the reader over D-Bus) and `sshd` excluded; eval assertion: `unixAuth` must stay on wherever `fprintAuth` is on (password fallback invariant); the greeter gains empty-submit wake-on-Enter (login.nix) |
 | `aspects.home.noctalia.uiScale` | home/noctalia.nix | `1.0` | UI scale multiplier (ui_scale + bar scale); 1.15 on ThinkBook |
