@@ -18,7 +18,12 @@
 #
 # Option-gated (explicit persona selection):
 #   - terminal, theme, noctalia, nautilus, mpv, audio, agents
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 {
   imports = [
     ../modules/home/shell.nix
@@ -57,7 +62,7 @@
     agents = {
       enable = true;
       packages = [
-        "opencode"
+        "opencode2"
         "grok"
       ];
     };
