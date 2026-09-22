@@ -1,6 +1,43 @@
 # STATE.md — Architecture, Design Principles & Current State
 
-> Last updated: 2026-08-29 · Greeter fingerprint wake: login.nix wires
+> Last updated: 2026-09-22 · Audio Phase 1:
+> audio.nix uses canonical wayland.systemd.target (owned by wayland.nix),
+> waits for EasyEffectsServer socket before preset load, fails loudly for
+> retry, adds ExecStop --quit + KillMode mixed; headless anchors to
+> default.target; unbypass requires activePreset.
+> Prior: Keyring unlock streamlined:
+> portals.nix now uses services.gnome.gnome-keyring.enable (D-Bus activation,
+> Secret portal backend, cap_ipc_lock wrapper, PAM) plus
+> security.pam.services.greetd.enableGnomeKeyring for the real login path
+> (nixpkgs only wires `login`, which greetd never traverses) — replacing the
+> bare systemPackages install that never auto-unlocked. Password logins unlock
+> silently; fingerprint logins carry no authtok, so first secret access prompts
+> once per session (accepted).
+> Prior: Audio startup DAG streamlined: modules/home/audio.nix
+> collapsed to a single easyeffects.service (ExecStartPost loads activePreset,
+> WantedBy/PartOf niri.service like Noctalia) — loader unit, both
+> Wayland-socket polls, and the 15x shell retry loop deleted (single-shot Post
+> + Restart=on-failure); presets/impulses are now attrsOf path keyed by stem
+> (no duplicate guard needed), kernel cross-check moved from eval-time JSON
+> parsing to a switch-time home.activation jq check; service.headless.enable →
+> headless.enable, startup.disableBypass → startup.unbypass.enable (old name
+> was inverted: true ran --bypass 2 to *disable* bypass).
+> Prior: Audio module refactor + graphical-session
+> stall fix: modules/home/audio.nix flattened (shared ee/offscreen/
+> bypassCmd/waitForDisplay bindings; QT_QPA_PLATFORM moved from inline
+> script text into unit Environment so the scripts are display-agnostic;
+> shared assetType submodule, deploy helper and uniqueNames assertion
+> helper replace the duplicated preset/impulse plumbing). Root cause of
+> the ~60s slow "D-Bus startup" found: dbus-broker itself is fast (41ms
+> system / 10ms session) — the preset loader was WantedBy=
+> graphical-session.target and waited on easyeffects → xdg-desktop-portal
+> (25s timeout on org.freedesktop.portal.Desktop) → portal-gnome, whose
+> Requisite=graphical-session.target closed the cycle (target reached only
+> 0.8ms after the loader finished). The loader is now anchored to
+> easyeffects.service (WantedBy/After/PartOf, Wants dropped), breaking the
+> cycle; the easyeffects service itself keeps WantedBy=
+> graphical-session.target.
+> Prior: Greeter fingerprint wake: login.nix wires
 > auth.allow_empty_password to aspects.hardware.fingerprint — the greeter
 > only starts the greetd/PAM conversation on submit and pam_fprintd is the
 > first (sufficient) module of the greetd stack, so empty-submit allowance
@@ -217,7 +254,8 @@ nixos/
 │   │   ├── desktop/                       # Wayland desktop (aspects.desktop.enable)
 │   │   │   ├── default.nix                # Index (niri, portals, login, browser)
 │   │   │   ├── niri.nix                   # Niri compositor + uniform Wayland sessionVariables (SDL fallback)
-│   │   │   ├── portals.nix                # XDG desktop portals (GTK fallback) + dconf + Secret portal provider
+│   │   │   ├── portals.nix                # XDG desktop portals (GTK fallback) + dconf + gnome-keyring
+│   │   │                                  #   Secret backend, auto-unlocked via greetd PAM
 │   │   │   ├── browser.nix                # Firefox (system-level, native Wayland)
 │   │   │   └── login.nix                  # noctalia-greeter: declarative synced appearance
 │   │   │                                  #   (palette from lib/palettes.nix via the aspects.theme
@@ -251,6 +289,7 @@ nixos/
 │       │                                  #   udp/https before client.add
 │       ├── niri.nix                       # Niri user config.kdl (always-on with desktop profile, palette-derived rings)
 │       ├── wayland.nix                    # grim/slurp/wl-clipboard/xwayland-satellite/qt-wayland
+│       │                                  #   + canonical wayland.systemd.target (niri.service)
 │       ├── terminal.nix                   # Kitty, structured palette, sets TERMINAL; opacity/fontSize/padding knobs
 │       ├── theme.nix                      # GTK/QT/cursor/dconf (accent enum, mode, font defaults, palette + noctalia material)
 │       ├── noctalia.nix                   # Noctalia v5 shell (uiScale, bar layout + sole
@@ -258,9 +297,11 @@ nixos/
 │       ├── noctalia-cpu-power.nix         # CPU power plugin deploy only (RAPL/hwmon paths,
 │       │                                  #   eval assertions; no bar layout overrides)
 │       ├── nautilus.nix                   # Nautilus file manager + dconf defaults (aspects.home.nautilus)
-│       ├── audio.nix                      # Generic EasyEffects DSP service + preset/impulse
-│       │                                  #   deployment (kernel-name assertions; hide-window
-│       │                                  #   startup + display-wait ExecStartPre)
+│       ├── audio.nix                      # Generic EasyEffects DSP: single service +
+│       │                                  #   ExecStartPost preset load (wayland-target anchored,
+│       │                                  #   socket-wait + required load/unbypass, --quit/mixed),
+│       │                                  #   attrsOf preset/impulse deploy, switch-time
+│       │                                  #   kernel-name check
 │       └── agents.nix                     # LLM agents from llm-agents.nix (packages default [])
 │
 ├── profiles/
@@ -417,6 +458,8 @@ nixos/
 | `aspects.home.noctalia.cpuPower.maxWatts` | home/noctalia-cpu-power.nix | `500` | Sanity gate: higher readings are dropped and re-baselined, never clamped for display |
 | `aspects.home.noctalia.cpuPower.glyph` | home/noctalia-cpu-power.nix | `"bolt"` | Material glyph beside the watt reading |
 | `aspects.home.audio.graphViewer.enable` | home/audio.nix | `false` | PipeWire graph viewer tool (crosspipe) |
+| `aspects.home.audio.headless.enable` | home/audio.nix | `false` | Offscreen Qt platform + default.target anchor (no compositor) |
+| `aspects.home.audio.startup.unbypass.enable` | home/audio.nix | `false` | `ee --bypass 2` after preset load (DSP active, requires activePreset); on on ThinkBook |
 | `aspects.virtualisation.ksm.enable` | virt/features.nix | `false` | Memory deduplication (off on laptops to save CPU/battery) |
 | `aspects.virtualisation.swtpm.enable` | virt/features.nix | `false` | Emulated TPM 2.0 |
 | `aspects.virtualisation.spiceUsbRedirection.enable` | virt/features.nix | `false` | SPICE USB device redirection |

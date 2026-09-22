@@ -8,43 +8,20 @@
 {
   aspects.home.audio = {
     graphViewer.enable = true;
-    # Service runs display-connected (headless defaults to false): EasyEffects
-    # is a single GApplication instance, and an offscreen service would own
-    # the D-Bus name on an invisible display, locking the GUI out. On the
-    # session display, opening the app shows the service's window.
-    startup.disableBypass = true;
+    # Display-connected (headless defaults off): EasyEffects is a
+    # single-instance app, so opening the GUI shows the service's window.
+    startup.unbypass.enable = true;
     activePreset = "thinkbook-speakers-dolby-music";
-    presets = [
-      {
-        name = "thinkbook-speakers-dolby-music";
-        file = ../assets/easyeffects/thinkbook-speakers-dolby-music.json;
-      }
-      {
-        name = "thinkbook-speakers-dolby-movie";
-        file = ../assets/easyeffects/thinkbook-speakers-dolby-movie.json;
-      }
-      {
-        name = "thinkbook-speakers-enhanced";
-        file = ../assets/easyeffects/thinkbook-speakers-enhanced.json;
-      }
-      {
-        name = "thinkbook-speakers-movie-enhanced";
-        file = ../assets/easyeffects/thinkbook-speakers-movie-enhanced.json;
-      }
-      {
-        name = "headphones-neutral";
-        file = ../assets/easyeffects/headphones-neutral.json;
-      }
-    ];
-    impulses = [
-      {
-        name = "DolbyMusic.irs";
-        file = ../assets/easyeffects/irs/thinkbook16-g7/DolbyMusic.irs;
-      }
-      {
-        name = "DolbyMovie.irs";
-        file = ../assets/easyeffects/irs/thinkbook16-g7/DolbyMovie.irs;
-      }
-    ];
+    presets = {
+      thinkbook-speakers-dolby-music = ../assets/easyeffects/thinkbook-speakers-dolby-music.json;
+      thinkbook-speakers-dolby-movie = ../assets/easyeffects/thinkbook-speakers-dolby-movie.json;
+      thinkbook-speakers-enhanced = ../assets/easyeffects/thinkbook-speakers-enhanced.json;
+      thinkbook-speakers-movie-enhanced = ../assets/easyeffects/thinkbook-speakers-movie-enhanced.json;
+      headphones-neutral = ../assets/easyeffects/headphones-neutral.json;
+    };
+    impulses = {
+      DolbyMusic = ../assets/easyeffects/irs/thinkbook16-g7/DolbyMusic.irs;
+      DolbyMovie = ../assets/easyeffects/irs/thinkbook16-g7/DolbyMovie.irs;
+    };
   };
 }

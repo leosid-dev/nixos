@@ -54,14 +54,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    # The upstream unit binds After/PartOf/WantedBy to wayland.systemd.target.
-    # Point it at niri.service (started by Niri's built-in systemd activation)
-    # instead of graphical-session.target: the latter waits for
-    # xdg-desktop-autostart.target, whose portal probing can delay shell
-    # startup by tens of seconds. niri.service comes up as soon as the
-    # compositor is ready.
-    wayland.systemd.target = "niri.service";
-
+    # Session anchor lives in wayland.nix (canonical wayland.systemd.target);
+    # the upstream Noctalia unit follows it automatically.
     programs.noctalia = {
       enable = true;
       systemd.enable = true;
@@ -77,6 +71,20 @@ in
 
       settings = {
         accessibility.ui_scale = cfg.uiScale;
+
+        # Keyring stub: Noctalia opens its encrypted-storage key at every
+        # startup even with clipboard history disabled. With
+        # key_source="secret-service" a fingerprint login (locked collection)
+        # triggers an unsolicited unlock prompt. key_source="file" never
+        # touches Secret Service; /dev/null is an absolute path (passes
+        # `noctalia config validate`) that fails the key-file check and lands
+        # in BackendError without prompting. Encrypted history/calendar cache
+        # become session-only — acceptable here (clipboard history off, no
+        # calendar accounts). System keyring stays enabled for other apps.
+        storage = {
+          key_source = "file";
+          key_file = "/dev/null";
+        };
 
         shell = {
           # Font follows aspects.theme.font (single source of truth).
