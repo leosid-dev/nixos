@@ -47,6 +47,17 @@
 > once fprintd fails or times out). Zero-keypress wake is not possible with
 > greeter 1.2.1: no auto-start hook, and greetd's sequential PAM protocol
 > cannot claim the reader concurrently with the password prompt.
+> Prior: Noctalia palette format-2 migration (shell 5.0.1 -> 5.4.1):
+> lib/palettes.nix now records Noctalia's v5.4 palette-file schema —
+> snake_case roles, mSurfaceVariant/mOutline renamed to
+> surface_container/outline_variant, terminal cursorText/selectionFg/
+> selectionBg -> cursor_text/selection_fg/selection_bg, and explicit
+> hover/on_hover (previously runtime-derived as hover=tertiary; fixed
+> palettes omitting them now render transparent black). The HM custom
+> palette JSON gains top-level version=2, config.toml role tokens were
+> renamed (widget workspaces empty_color), and login.nix keeps reading the
+> greeter's older material spellings (surface_variant/outline) from the
+> renamed lib fields while hover/on_hover now read the explicit tokens.
 > Prior: Greeter appearance pass: the noctalia-greeter
 > is now declaratively synced with the Noctalia shell — login.nix ships a
 > complete 16-key [appearance.palette] derived from lib/palettes.nix via a

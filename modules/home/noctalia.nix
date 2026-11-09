@@ -64,7 +64,11 @@ in
       # The palette data comes from aspects.theme.palette.noctalia (derived
       # from lib/palettes.nix), so adding a new accent only touches
       # lib/palettes.nix + theme.nix — no duplication here.
+      # version = 2 is the current palette-file format (Noctalia v5.4.x):
+      # snake_case roles, surface_container/outline_variant, explicit
+      # hover/on_hover (no longer derived for fixed palettes).
       customPalettes.${theme.accent} = {
+        version = 2;
         dark = theme.palette.noctalia.dark;
         light = theme.palette.noctalia.light;
       };
@@ -189,7 +193,8 @@ in
             show_labels = true;
             focused_color = "primary";
             occupied_color = "secondary";
-            empty_color = "surface_variant";
+            # Role renames: former surface_variant is surface_container (v5.4.0).
+            empty_color = "surface_container";
           };
           taskbar = {
             #icon_scale = cfg.uiScale;

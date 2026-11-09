@@ -32,26 +32,28 @@ let
   theme = config.aspects.theme;
   selected = palettes.${theme.accent}.${theme.mode};
 
-  # greeter.toml [appearance.palette] schema: the 14 Material roles plus
-  # hover/on_hover. The Noctalia runtime derives hover = tertiary
-  # (see lib/palettes.nix), so the greeter mirrors that mapping.
+  # greeter.toml [appearance.palette] schema: the 14 material-role spellings
+  # (surface_variant/outline — the greeter schema predates the v5.4.0 rename,
+  # unlike the shell's format-2 palette files) plus hover/on_hover.
+  # lib/palettes.nix records carry hover explicitly (the value the v5.0.1
+  # runtime derived: hover = tertiary), so the greeter reads it directly.
   greeterPalette = with selected; {
-    primary = mPrimary;
-    on_primary = mOnPrimary;
-    secondary = mSecondary;
-    on_secondary = mOnSecondary;
-    tertiary = mTertiary;
-    on_tertiary = mOnTertiary;
-    error = mError;
-    on_error = mOnError;
-    surface = mSurface;
-    on_surface = mOnSurface;
-    surface_variant = mSurfaceVariant;
-    on_surface_variant = mOnSurfaceVariant;
-    outline = mOutline;
-    shadow = mShadow;
-    hover = mTertiary;
-    on_hover = mOnTertiary;
+    primary = primary;
+    on_primary = on_primary;
+    secondary = secondary;
+    on_secondary = on_secondary;
+    tertiary = tertiary;
+    on_tertiary = on_tertiary;
+    error = error;
+    on_error = on_error;
+    surface = surface;
+    on_surface = on_surface;
+    surface_variant = surface_container;
+    on_surface_variant = on_surface_variant;
+    outline = outline_variant;
+    shadow = shadow;
+    hover = hover;
+    on_hover = on_hover;
   };
 in
 {

@@ -136,8 +136,9 @@ What the config files provide
   `TERMINAL` session variable set by the terminal aspect.
 - Noctalia: `programs.noctalia.settings` receives the theme mode (from
   `aspects.theme.mode`), a custom palette emitted from
-  `aspects.theme.palette.noctalia` (driven by `aspects.theme.accent`, m*
-  Material schema with dark and light variants), and the bar layout — a
+  `aspects.theme.palette.noctalia` (driven by `aspects.theme.accent`,
+  Noctalia v5.4 palette format 2: snake_case roles with explicit
+  hover/on_hover, dark and light variants), and the bar layout — a
   flat macOS-style top bar with three flush lanes: workspaces + taskbar
   left, clock + notifications + privacy center, and a sysmon telemetry
   capsule (CPU temp + RAM %, joined by the CPU package power widget when

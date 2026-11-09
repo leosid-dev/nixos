@@ -2,32 +2,44 @@
 #
 # Pure data: accent -> mode -> palette record.
 # Single source of truth for color tokens across the entire desktop:
-# - Noctalia custom palette JSON (m* Material roles + terminal)
+# - Noctalia custom palette JSON (format-2 snake_case roles + terminal)
 # - Kitty terminal colors (foreground/background/cursor/selection/palette)
 # - Niri focus ring (active, inactive, workspace background)
+# - noctalia-greeter [appearance.palette] (greeter schema still uses the
+#   material spellings surface_variant/outline; login.nix maps them)
+#
+# Schema follows Noctalia's palette-file format 2 (v5.4.x): the 16 palette
+# roles include hover/on_hover, which v5.0.1 derived at runtime
+# (hover = tertiary). The runtime no longer derives them for fixed palettes
+# (since v5.2.1 they fall back to transparent black when omitted), so every
+# record ships them explicitly, carrying the old derived values.
 {
   monochrome = {
     dark = {
-      # Material roles for Noctalia v5 (m* schema).
-      # The runtime maps hover = tertiary (mapGeneratedPaletteMode), so
-      # mTertiary doubles as the hover fill; mOutline is chosen >= 3:1
-      # against the surface so Noctalia's ensureContrast leaves it alone.
-      mPrimary = "#e6e6e6";
-      mOnPrimary = "#000000";
-      mSecondary = "#c4c4c4";
-      mOnSecondary = "#000000";
-      mTertiary = "#262626";
-      mOnTertiary = "#e6e6e6";
+      # Noctalia format-2 palette roles. mSurfaceVariant -> surface_container
+      # and mOutline -> outline_variant (v5.4.0 rename, same colors);
+      # outline_variant is >= 3:1 against the surface so Noctalia's
+      # ensureContrast leaves the derived outline alone.
+      primary = "#e6e6e6";
+      on_primary = "#000000";
+      secondary = "#c4c4c4";
+      on_secondary = "#000000";
+      tertiary = "#262626";
+      on_tertiary = "#e6e6e6";
       # Error is the brightest achromatic step so destructive states stay
       # distinguishable from primary without introducing hue.
-      mError = "#f5f5f5";
-      mOnError = "#000000";
-      mSurface = "#000000";
-      mOnSurface = "#e6e6e6";
-      mSurfaceVariant = "#141414";
-      mOnSurfaceVariant = "#a3a3a3";
-      mOutline = "#5c5c5c";
-      mShadow = "#000000";
+      error = "#f5f5f5";
+      on_error = "#000000";
+      surface = "#000000";
+      on_surface = "#e6e6e6";
+      surface_container = "#141414";
+      on_surface_variant = "#a3a3a3";
+      outline_variant = "#5c5c5c";
+      shadow = "#000000";
+      # Explicit hover fill: the v5.0.1 runtime mapping (hover = tertiary),
+      # now carried by the record instead of being derived.
+      hover = "#262626";
+      on_hover = "#e6e6e6";
 
       # Focus ring for Niri
       focus = {
@@ -42,9 +54,9 @@
         foreground = "#e6e6e6";
         background = "#000000";
         cursor = "#e6e6e6";
-        cursorText = "#000000";
-        selectionFg = "#000000";
-        selectionBg = "#a3a3a3";
+        cursor_text = "#000000";
+        selection_fg = "#000000";
+        selection_bg = "#a3a3a3";
         normal = {
           black = "#1a1a1a";
           red = "#8c8c8c";
@@ -70,25 +82,27 @@
       opacity = 1.0;
     };
     light = {
-      # mTertiary doubles as the hover fill at runtime — kept near the
-      # surface ladder, with dark on-colour for legibility on it.
-      mPrimary = "#1a1a1a";
-      mOnPrimary = "#ffffff";
-      mSecondary = "#525252";
-      mOnSecondary = "#ffffff";
-      mTertiary = "#e4e4e4";
-      mOnTertiary = "#1a1a1a";
+      # Hover sits near the surface ladder, with dark on-colour for
+      # legibility on it.
+      primary = "#1a1a1a";
+      on_primary = "#ffffff";
+      secondary = "#525252";
+      on_secondary = "#ffffff";
+      tertiary = "#e4e4e4";
+      on_tertiary = "#1a1a1a";
       # Darkest achromatic step mirrors the dark-mode "extreme neutral"
       # convention instead of breaking monochrome with red.
-      mError = "#0a0a0a";
-      mOnError = "#ffffff";
-      mSurface = "#ffffff";
-      mOnSurface = "#1a1a1a";
-      mSurfaceVariant = "#f0f0f0";
-      mOnSurfaceVariant = "#525252";
+      error = "#0a0a0a";
+      on_error = "#ffffff";
+      surface = "#ffffff";
+      on_surface = "#1a1a1a";
+      surface_container = "#f0f0f0";
+      on_surface_variant = "#525252";
       # >= 3:1 against the surface so ensureContrast keeps it stable.
-      mOutline = "#949494";
-      mShadow = "#e0e0e0";
+      outline_variant = "#949494";
+      shadow = "#e0e0e0";
+      hover = "#e4e4e4";
+      on_hover = "#1a1a1a";
 
       focus = {
         active = "#1a1a1a";
@@ -102,9 +116,9 @@
         foreground = "#1a1a1a";
         background = "#ffffff";
         cursor = "#1a1a1a";
-        cursorText = "#ffffff";
-        selectionFg = "#ffffff";
-        selectionBg = "#525252";
+        cursor_text = "#ffffff";
+        selection_fg = "#ffffff";
+        selection_bg = "#525252";
         normal = {
           black = "#1a1a1a";
           red = "#474747";
@@ -133,20 +147,22 @@
 
   catppuccin-mocha = {
     dark = {
-      mPrimary = "#89b4fa";
-      mOnPrimary = "#11111b";
-      mSecondary = "#b4befe";
-      mOnSecondary = "#11111b";
-      mTertiary = "#f5c2e7";
-      mOnTertiary = "#11111b";
-      mError = "#f38ba8";
-      mOnError = "#11111b";
-      mSurface = "#1e1e2e";
-      mOnSurface = "#cdd6f4";
-      mSurfaceVariant = "#313244";
-      mOnSurfaceVariant = "#a6adc8";
-      mOutline = "#45475a";
-      mShadow = "#11111b";
+      primary = "#89b4fa";
+      on_primary = "#11111b";
+      secondary = "#b4befe";
+      on_secondary = "#11111b";
+      tertiary = "#f5c2e7";
+      on_tertiary = "#11111b";
+      error = "#f38ba8";
+      on_error = "#11111b";
+      surface = "#1e1e2e";
+      on_surface = "#cdd6f4";
+      surface_container = "#313244";
+      on_surface_variant = "#a6adc8";
+      outline_variant = "#45475a";
+      shadow = "#11111b";
+      hover = "#f5c2e7";
+      on_hover = "#11111b";
 
       focus = {
         active = "#89b4fa";
@@ -158,9 +174,9 @@
         foreground = "#cdd6f4";
         background = "#1e1e2e";
         cursor = "#f5e0dc";
-        cursorText = "#1e1e2e";
-        selectionFg = "#1e1e2e";
-        selectionBg = "#f5e0dc";
+        cursor_text = "#1e1e2e";
+        selection_fg = "#1e1e2e";
+        selection_bg = "#f5e0dc";
         normal = {
           black = "#45475a";
           red = "#f38ba8";
@@ -186,20 +202,22 @@
       opacity = 0.95;
     };
     light = {
-      mPrimary = "#1e66f5";
-      mOnPrimary = "#ffffff";
-      mSecondary = "#7287fd";
-      mOnSecondary = "#ffffff";
-      mTertiary = "#ea76cb";
-      mOnTertiary = "#ffffff";
-      mError = "#d20f39";
-      mOnError = "#ffffff";
-      mSurface = "#eff1f5";
-      mOnSurface = "#4c4f69";
-      mSurfaceVariant = "#e6e9ef";
-      mOnSurfaceVariant = "#6c6f85";
-      mOutline = "#9ca0b0";
-      mShadow = "#bcc0cc";
+      primary = "#1e66f5";
+      on_primary = "#ffffff";
+      secondary = "#7287fd";
+      on_secondary = "#ffffff";
+      tertiary = "#ea76cb";
+      on_tertiary = "#ffffff";
+      error = "#d20f39";
+      on_error = "#ffffff";
+      surface = "#eff1f5";
+      on_surface = "#4c4f69";
+      surface_container = "#e6e9ef";
+      on_surface_variant = "#6c6f85";
+      outline_variant = "#9ca0b0";
+      shadow = "#bcc0cc";
+      hover = "#ea76cb";
+      on_hover = "#ffffff";
 
       focus = {
         active = "#1e66f5";
@@ -211,9 +229,9 @@
         foreground = "#4c4f69";
         background = "#eff1f5";
         cursor = "#dc8a78";
-        cursorText = "#eff1f5";
-        selectionFg = "#eff1f5";
-        selectionBg = "#dc8a78";
+        cursor_text = "#eff1f5";
+        selection_fg = "#eff1f5";
+        selection_bg = "#dc8a78";
         normal = {
           black = "#5c5f77";
           red = "#d20f39";
@@ -242,20 +260,22 @@
 
   adwaita = {
     dark = {
-      mPrimary = "#78aeed";
-      mOnPrimary = "#1e1e1e";
-      mSecondary = "#62a0ea";
-      mOnSecondary = "#1e1e1e";
-      mTertiary = "#99c1f1";
-      mOnTertiary = "#1e1e1e";
-      mError = "#ed333b";
-      mOnError = "#ffffff";
-      mSurface = "#1e1e1e";
-      mOnSurface = "#f2f2f2";
-      mSurfaceVariant = "#2d2d2d";
-      mOnSurfaceVariant = "#c0bfbc";
-      mOutline = "#4d4d4d";
-      mShadow = "#121212";
+      primary = "#78aeed";
+      on_primary = "#1e1e1e";
+      secondary = "#62a0ea";
+      on_secondary = "#1e1e1e";
+      tertiary = "#99c1f1";
+      on_tertiary = "#1e1e1e";
+      error = "#ed333b";
+      on_error = "#ffffff";
+      surface = "#1e1e1e";
+      on_surface = "#f2f2f2";
+      surface_container = "#2d2d2d";
+      on_surface_variant = "#c0bfbc";
+      outline_variant = "#4d4d4d";
+      shadow = "#121212";
+      hover = "#99c1f1";
+      on_hover = "#1e1e1e";
 
       focus = {
         active = "#78aeed";
@@ -267,9 +287,9 @@
         foreground = "#f2f2f2";
         background = "#1e1e1e";
         cursor = "#ffffff";
-        cursorText = "#1e1e1e";
-        selectionFg = "#ffffff";
-        selectionBg = "#3584e4";
+        cursor_text = "#1e1e1e";
+        selection_fg = "#ffffff";
+        selection_bg = "#3584e4";
         normal = {
           black = "#1e1e1e";
           red = "#ed333b";
@@ -295,20 +315,22 @@
       opacity = 0.95;
     };
     light = {
-      mPrimary = "#1c71d8";
-      mOnPrimary = "#ffffff";
-      mSecondary = "#3584e4";
-      mOnSecondary = "#ffffff";
-      mTertiary = "#1a5fb4";
-      mOnTertiary = "#ffffff";
-      mError = "#c01c28";
-      mOnError = "#ffffff";
-      mSurface = "#fafafa";
-      mOnSurface = "#241f31";
-      mSurfaceVariant = "#ebebeb";
-      mOnSurfaceVariant = "#5e5c64";
-      mOutline = "#c0bfbc";
-      mShadow = "#deddda";
+      primary = "#1c71d8";
+      on_primary = "#ffffff";
+      secondary = "#3584e4";
+      on_secondary = "#ffffff";
+      tertiary = "#1a5fb4";
+      on_tertiary = "#ffffff";
+      error = "#c01c28";
+      on_error = "#ffffff";
+      surface = "#fafafa";
+      on_surface = "#241f31";
+      surface_container = "#ebebeb";
+      on_surface_variant = "#5e5c64";
+      outline_variant = "#c0bfbc";
+      shadow = "#deddda";
+      hover = "#1a5fb4";
+      on_hover = "#ffffff";
 
       focus = {
         active = "#1c71d8";
@@ -320,9 +342,9 @@
         foreground = "#241f31";
         background = "#fafafa";
         cursor = "#241f31";
-        cursorText = "#fafafa";
-        selectionFg = "#ffffff";
-        selectionBg = "#1c71d8";
+        cursor_text = "#fafafa";
+        selection_fg = "#ffffff";
+        selection_bg = "#1c71d8";
         normal = {
           black = "#241f31";
           red = "#c01c28";

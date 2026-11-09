@@ -14,27 +14,13 @@ let
   palettes = import ../../lib/palettes.nix;
   selected = palettes.${theme.accent}.${theme.mode};
 
-  # Noctalia material extraction: m* roles + terminal, without mHover/mOnHover.
-  # The runtime derives hover = tertiary, so shipping hover would be dead data.
-  extractNoctalia = p: {
-    inherit (p)
-      mPrimary
-      mOnPrimary
-      mSecondary
-      mOnSecondary
-      mTertiary
-      mOnTertiary
-      mError
-      mOnError
-      mSurface
-      mOnSurface
-      mSurfaceVariant
-      mOnSurfaceVariant
-      mOutline
-      mShadow
-      terminal
-      ;
-  };
+  # Noctalia palette extraction: format-2 role names + terminal. The record
+  # in lib/palettes.nix already matches the palette-JSON schema; only the
+  # Niri focus tokens and the Kitty opacity knob are non-Noctalia concerns.
+  extractNoctalia = p: removeAttrs p [
+    "focus"
+    "opacity"
+  ];
 in
 {
   options.aspects.home.theme = {
@@ -152,12 +138,12 @@ in
       selection = {
         background = lib.mkOption {
           type = lib.types.str;
-          default = selected.terminal.selectionBg;
+          default = selected.terminal.selection_bg;
           description = "Selection background color.";
         };
         foreground = lib.mkOption {
           type = lib.types.str;
-          default = selected.terminal.selectionFg;
+          default = selected.terminal.selection_fg;
           description = "Selection foreground text color.";
         };
       };
@@ -179,17 +165,17 @@ in
         };
         cursorText = lib.mkOption {
           type = lib.types.str;
-          default = selected.terminal.cursorText;
+          default = selected.terminal.cursor_text;
           description = "Terminal text color under cursor.";
         };
         selectionBg = lib.mkOption {
           type = lib.types.str;
-          default = selected.terminal.selectionBg;
+          default = selected.terminal.selection_bg;
           description = "Terminal selection background color.";
         };
         selectionFg = lib.mkOption {
           type = lib.types.str;
-          default = selected.terminal.selectionFg;
+          default = selected.terminal.selection_fg;
           description = "Terminal selection foreground color.";
         };
         normal = lib.mkOption {
